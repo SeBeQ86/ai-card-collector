@@ -302,6 +302,7 @@ p.error {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   text-decoration: none;
+  color: inherit;
   transition: border-color .12s, box-shadow .12s;
   min-width: 64px;
 }
