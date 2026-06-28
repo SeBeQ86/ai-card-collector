@@ -19,38 +19,29 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: review/package-lock.json
+          node-version: '22'
 
       - name: Install review agent dependencies
-        run: npm ci
+        run: npm install
         working-directory: review
 
       - name: Get PR diff
-        id: diff
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_DIFF=$(gh pr diff ${{ github.event.pull_request.number }} \
-            --repo ${{ github.repository }} 2>/dev/null \
-            || git diff origin/${{ github.base_ref }}...HEAD)
-          # Truncate to ~28000 chars to stay within token limits
-          PR_DIFF_TRUNCATED="${PR_DIFF:0:28000}"
-          echo "diff<<EOF" >> $GITHUB_OUTPUT
-          echo "$PR_DIFF_TRUNCATED" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          gh pr diff ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} > /tmp/pr_diff.txt 2>/dev/null \
+            || git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr_diff.txt
+          truncate -s 28000 /tmp/pr_diff.txt 2>/dev/null || true
 
       - name: Run AI code review agent
         id: review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          echo "${{ steps.diff.outputs.diff }}" | npx tsx review.ts --json > /tmp/review.json 2>/tmp/review.stderr || true
+          cat /tmp/pr_diff.txt | npx tsx review.ts --json > /tmp/review.json 2>/tmp/review.stderr || true
           cat /tmp/review.stderr >&2 || true
 
-          # Parse JSON verdict and summary
           VERDICT=$(jq -r '.verdict // "unknown"' /tmp/review.json 2>/dev/null || echo "unknown")
           SUMMARY=$(jq -r '.summary // "Review unavailable."' /tmp/review.json 2>/dev/null || echo "Review unavailable.")
           IMPL=$(jq -r '.implementationCorrectness // "?"' /tmp/review.json 2>/dev/null || echo "?")
@@ -60,32 +51,23 @@ jobs:
           SEC=$(jq -r '.securitySafety // "?"' /tmp/review.json 2>/dev/null || echo "?")
 
           echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "summary<<SUMMARY_EOF" >> $GITHUB_OUTPUT
           echo "$SUMMARY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "scores=Poprawność: $IMPL/10 | Idiomatyczność: $IDIO/10 | Złożoność: $COMP/10 | Testy: $TEST/10 | Bezpieczeństwo: $SEC/10" >> $GITHUB_OUTPUT
+          echo "SUMMARY_EOF" >> $GITHUB_OUTPUT
+          echo "scores=Impl:$IMPL Idio:$IDIO Complexity:$COMP Tests:$TEST Security:$SEC" >> $GITHUB_OUTPUT
         working-directory: review
 
       - name: Post review comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERDICT: ${{ steps.review.outputs.verdict }}
+          SCORES: ${{ steps.review.outputs.scores }}
+          SUMMARY: ${{ steps.review.outputs.summary }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          VERDICT="${{ steps.review.outputs.verdict }}"
-          if [ "$VERDICT" = "pass" ]; then
-            BADGE="✅ **PASS**"
-          else
-            BADGE="❌ **FAIL**"
-          fi
-
-          COMMENT="## 🤖 AI Code Review — $BADGE
-
-          ${{ steps.review.outputs.scores }}
-
-          ${{ steps.review.outputs.summary }}
-
-          ---
-          *Powered by Claude Haiku · [workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*"
-
+          if [ "$VERDICT" = "pass" ]; then BADGE="PASS"; else BADGE="FAIL"; fi
+          printf '## AI Code Review - %s\n\n%s\n\n%s\n\n---\n*Claude Haiku - %s*\n' \
+            "$BADGE" "$SCORES" "$SUMMARY" "$WORKFLOW_URL" > /tmp/comment.md
           gh pr comment ${{ github.event.pull_request.number }} \
             --repo ${{ github.repository }} \
-            --body "$COMMENT"
+            --body-file /tmp/comment.md
