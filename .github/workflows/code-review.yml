@@ -64,14 +64,20 @@ jobs:
       - name: Post review comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEW_TEXT: ${{ steps.review.outputs.review }}
         run: |
-          COMMENT="## 🤖 AI Code Review
+          cat > /tmp/review_comment.md << 'ENDOFCOMMENT'
+          ## 🤖 AI Code Review
+          ENDOFCOMMENT
 
-          ${{ steps.review.outputs.review }}
+          echo "$REVIEW_TEXT" >> /tmp/review_comment.md
+
+          cat >> /tmp/review_comment.md << 'ENDOFCOMMENT'
 
           ---
-          *Powered by Claude Haiku · [workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*"
+          *Powered by Claude Haiku*
+          ENDOFCOMMENT
 
           gh pr comment ${{ github.event.pull_request.number }} \
             --repo ${{ github.repository }} \
-            --body "$COMMENT"
+            --body-file /tmp/review_comment.md
