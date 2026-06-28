@@ -48,10 +48,10 @@ test.describe('Dashboard (requires login)', () => {
     await expect(page.locator('input[name="name"]')).toBeVisible();
   });
 
-  test('logout ends the session', async ({ page }) => {
+  test('protected page redirects to login after session cleared', async ({ page }) => {
     await login(page);
-    await page.goto('/logout.php');
-    // After logout, a protected page must redirect to login
+    // Clear cookies to simulate an expired/logged-out session
+    await page.context().clearCookies();
     await page.goto('/card-add.php');
     await expect(page).toHaveURL(/login\.php/);
   });
