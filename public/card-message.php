@@ -29,8 +29,11 @@ if ($card === null) {
     exit;
 }
 
-$messageEn = SellerMessageGenerator::generate($card, 'en');
-$messagePt = SellerMessageGenerator::generate($card, 'pt');
+$locales  = SellerMessageGenerator::locales();
+$messages = [];
+foreach ($locales as $code => $label) {
+    $messages[$code] = ['label' => $label, 'text' => SellerMessageGenerator::generate($card, $code)];
+}
 
 $appName = htmlspecialchars($config['name'], ENT_QUOTES, 'UTF-8');
 
@@ -85,17 +88,13 @@ function e(string $value): string
             </dl>
         </section>
 
+        <?php foreach ($messages as $code => $msg): ?>
         <section>
-            <h3>English</h3>
-            <textarea id="msg-en" rows="12" cols="70" readonly><?= e($messageEn) ?></textarea>
-            <button type="button" class="copy-btn" onclick="copyMsg('msg-en', this)">Copy</button>
+            <h3><?= e($msg['label']) ?></h3>
+            <textarea id="msg-<?= e($code) ?>" rows="10" cols="70" readonly><?= e($msg['text']) ?></textarea>
+            <button type="button" class="copy-btn" onclick="copyMsg('msg-<?= e($code) ?>', this)">Copy</button>
         </section>
-
-        <section>
-            <h3>Portuguese</h3>
-            <textarea id="msg-pt" rows="12" cols="70" readonly><?= e($messagePt) ?></textarea>
-            <button type="button" class="copy-btn" onclick="copyMsg('msg-pt', this)">Copy</button>
-        </section>
+        <?php endforeach; ?>
 
         <p><a href="card-edit.php?id=<?= $cardId ?>">Edit this card</a></p>
     </main>
