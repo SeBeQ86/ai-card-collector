@@ -75,15 +75,35 @@ jobs:
             BADGE="❌ **FAIL**"
           fi
 
-          COMMENT="## 🤖 AI Code Review — $BADGE
+          cat > /tmp/comment.md << 'COMMENT_EOF'
+          ## 🤖 AI Code Review — BADGE_PLACEHOLDER
 
-          ${{ steps.review.outputs.scores }}
+          SCORES_PLACEHOLDER
 
-          ${{ steps.review.outputs.summary }}
+          SUMMARY_PLACEHOLDER
 
           ---
-          *Powered by Claude Haiku · [workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*"
+          *Powered by Claude Haiku · [workflow](WORKFLOW_URL)*
+          COMMENT_EOF
+
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SCORES="${{ steps.review.outputs.scores }}"
+          SUMMARY="${{ steps.review.outputs.summary }}"
+
+          sed -i "s|BADGE_PLACEHOLDER|${BADGE}|g" /tmp/comment.md
+          sed -i "s|WORKFLOW_URL|${WORKFLOW_URL}|g" /tmp/comment.md
+          printf '%s' "$SCORES" > /tmp/scores.txt
+          printf '%s' "$SUMMARY" > /tmp/summary.txt
+
+          python3 -c "
+          import re, pathlib
+          c = pathlib.Path('/tmp/comment.md').read_text()
+          scores = pathlib.Path('/tmp/scores.txt').read_text()
+          summary = pathlib.Path('/tmp/summary.txt').read_text()
+          c = c.replace('SCORES_PLACEHOLDER', scores).replace('SUMMARY_PLACEHOLDER', summary)
+          pathlib.Path('/tmp/comment.md').write_text(c)
+          "
 
           gh pr comment ${{ github.event.pull_request.number }} \
             --repo ${{ github.repository }} \
-            --body "$COMMENT"
+            --body-file /tmp/comment.md
