@@ -6,6 +6,8 @@ $config = require dirname(__DIR__) . '/config/app.php';
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Auth\Auth;
+use App\Api\ApiCache;
+use App\Api\TcgDexClient;
 use App\Card\CardRepository;
 use App\Card\CardScorer;
 use App\Database\Connection;
@@ -148,10 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Load card image from API if linked
 $apiCardData = null;
 if ($input['api_card_id'] !== '') {
-    $apiConfig = require dirname(__DIR__) . '/config/app.php';
-    $apiKey    = (string) (getenv('POKEMON_TCG_API_KEY') ?: '');
-    $cache     = new \App\Api\ApiCache($pdo);
-    $client    = new \App\Api\PokemonTcgClient($cache, $apiKey);
+    $cache       = new ApiCache($pdo);
+    $client      = new TcgDexClient($cache);
     $apiCardData = $client->findById($input['api_card_id']);
 }
 
