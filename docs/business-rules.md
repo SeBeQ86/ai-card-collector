@@ -28,3 +28,5 @@ Użytkownik może wygenerować wiadomość do sprzedawcy na podstawie:
 ## BR-004: Fallback bez AI
 
 Jeżeli integracja AI nie jest skonfigurowana, aplikacja powinna móc przygotować prosty szablon wiadomości bez wywołania API.
+
+## end
