@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = (string) ($_POST['csrf_token'] ?? '');
 
     if (!Csrf::validate($token)) {
-        $error = 'Invalid request. Please try again.';
+        $error = 'Nieprawidłowe żądanie — spróbuj ponownie.';
     } else {
         $email    = trim((string) ($_POST['email']    ?? ''));
         $password =      (string) ($_POST['password'] ?? '');
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $error = 'Invalid email or password.';
+        $error = 'Nieprawidłowy e-mail lub hasło.';
     }
 }
 
@@ -44,24 +44,26 @@ $errorHtml = $error !== ''
     : '';
 
 ?><!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log in — <?= $appName ?></title>
-    <link rel="stylesheet" href="assets/style.css">
+    <title>Logowanie — <?= $appName ?></title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="assets/style.css?v=6">
 </head>
 <body class="page-login">
     <h1><?= $appName ?></h1>
     <?= $errorHtml ?>
     <form method="post" action="login.php">
         <?= Csrf::field() ?>
-        <label for="email">Email</label>
+        <label for="email">E-mail</label>
         <input type="email" id="email" name="email" required autofocus
                value="<?= htmlspecialchars((string) ($_POST['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-        <label for="password">Password</label>
+        <label for="password">Hasło</label>
         <input type="password" id="password" name="password" required>
-        <button type="submit">Log in</button>
+        <button type="submit">Zaloguj się</button>
     </form>
 </body>
 </html>
+

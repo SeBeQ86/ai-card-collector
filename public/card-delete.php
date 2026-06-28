@@ -6,6 +6,7 @@ $config = require dirname(__DIR__) . '/config/app.php';
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Auth\Auth;
+use App\Auth\Flash;
 use App\Card\CardRepository;
 use App\Database\Connection;
 use App\Security\Csrf;
@@ -30,8 +31,12 @@ $cardId = isset($_POST['card_id']) ? (int) $_POST['card_id'] : 0;
 
 if ($cardId > 0) {
     $repo = new CardRepository(Connection::get($config['db']));
-    $repo->deleteForUser($user['id'], $cardId);
+    $deleted = $repo->deleteForUser($user['id'], $cardId);
+    if ($deleted) {
+        Flash::set('success', 'Karta została usunięta.');
+    }
 }
 
 header('Location: index.php');
 exit;
+

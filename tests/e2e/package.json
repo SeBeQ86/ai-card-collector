@@ -1,0 +1,12 @@
+{
+  "name": "ai-card-collector-e2e",
+  "version": "1.0.0",
+  "description": "Playwright end-to-end smoke tests",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  }
+}

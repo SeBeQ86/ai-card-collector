@@ -1,11 +1,12 @@
 <?php declare(strict_types=1);
 
 /**
- * AJAX endpoint: card name autocomplete via TCGdex API (api.tcgdex.net/v2).
+ * AJAX endpoint: full card details by TCGdex ID.
  *
- * GET /api/card-search.php?q=charizard
+ * GET /api/card-detail.php?id=swsh1-1
  * Auth-gated: returns 401 JSON if session is not authenticated.
- * Returns: JSON array of {id, name, set, image_small, image_large}
+ * Returns: JSON object {id, name, set, local_id, rarity, image_small, image_large,
+ *                       price_avg30, price_trend, price_low} or null if not found.
  */
 
 $config = require dirname(__DIR__, 2) . '/config/app.php';
@@ -27,10 +28,10 @@ if (!Auth::check()) {
     exit;
 }
 
-$query = trim((string) ($_GET['q'] ?? ''));
+$id = trim((string) ($_GET['id'] ?? ''));
 
-if (strlen($query) < 2) {
-    echo json_encode([]);
+if ($id === '' || strlen($id) > 80) {
+    echo json_encode(null);
     exit;
 }
 
@@ -38,6 +39,5 @@ $pdo    = Connection::get($config['db']);
 $cache  = new ApiCache($pdo);
 $client = new TcgDexClient($cache);
 
-$results = $client->searchByName($query);
-
-echo json_encode($results, JSON_UNESCAPED_UNICODE);
+$card = $client->findById($id);
+echo json_encode($card, JSON_UNESCAPED_UNICODE);

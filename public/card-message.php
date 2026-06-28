@@ -6,7 +6,9 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 use App\Auth\Auth;
 use App\Card\CardRepository;
 use App\Database\Connection;
+use App\Message\MessageTemplateRepository;
 use App\Message\SellerMessageGenerator;
+use App\Security\Csrf;
 
 Auth::startSession();
 Auth::requireAuth();
@@ -19,7 +21,8 @@ if ($cardId <= 0) {
     exit;
 }
 
-$repo = new CardRepository(Connection::get($config['db']));
+$pdo  = Connection::get($config['db']);
+$repo = new CardRepository($pdo);
 $card = $repo->findForUser($user['id'], $cardId);
 
 if ($card === null) {
@@ -27,10 +30,14 @@ if ($card === null) {
     exit;
 }
 
-$locales   = SellerMessageGenerator::locales();
-$messages  = [];
-foreach ($locales as $locale => $label) {
-    $messages[$locale] = SellerMessageGenerator::generate($card, $locale);
+$tmplRepo  = new MessageTemplateRepository($pdo);
+$templates = $tmplRepo->all();
+
+$locales  = SellerMessageGenerator::locales();
+$messages = [];
+foreach ($locales as $code => $label) {
+    $custom = $templates[$code] ?? null;
+    $messages[$code] = ['label' => $label, 'text' => SellerMessageGenerator::generate($card, $code, $custom)];
 }
 
 $appName = htmlspecialchars($config['name'], ENT_QUOTES, 'UTF-8');
@@ -40,176 +47,246 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function statusLabel(string $status): string
+{
+    return match ($status) {
+        'searching'      => 'Szukam',
+        'contacted'      => 'Skontaktowano',
+        'offer_received' => 'Oferta otrzymana',
+        'acquired'       => 'Zakupiono',
+        'abandoned'      => 'Porzucono',
+        default          => $status,
+    };
+}
+
 ?><!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seller message — <?= $appName ?></title>
-    <link rel="stylesheet" href="assets/style.css">
+    <title>Wiadomość — <?= e($card['name']) ?> — <?= $appName ?></title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="assets/style.css?v=6">
     <style>
-        .howto {
-            background: #f0f7ff;
-            border-left: 4px solid #3b82f6;
-            border-radius: 0 6px 6px 0;
-            padding: 1rem 1.25rem;
+        /* ---- Card info bar ---- */
+        .msg-card-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: .9rem 1.25rem;
             margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
         }
-        .howto h3 { margin: 0 0 .5rem; font-size: 1rem; color: #1e40af; }
-        .howto ol { margin: 0; padding-left: 1.25rem; }
-        .howto li { margin-bottom: .3rem; color: #374151; font-size: .9rem; }
-        .howto .tip { margin-top: .75rem; font-size: .85rem; color: #6b7280; }
-        .howto .tip strong { color: #374151; }
 
-        .lang-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1rem; }
-        .lang-tab {
-            padding: .4rem .9rem;
-            border: 1px solid #d1d5db;
+        .msg-card-img {
+            width: 44px;
+            height: 61px;
+            object-fit: contain;
             border-radius: 4px;
-            background: #f9fafb;
-            cursor: pointer;
-            font-size: .9rem;
-            color: #374151;
+            flex-shrink: 0;
         }
-        .lang-tab:hover { background: #e5e7eb; }
-        .lang-tab.active {
-            background: #2563eb;
-            color: #fff;
-            border-color: #2563eb;
+
+        .msg-card-img-placeholder {
+            width: 44px;
+            height: 61px;
+            flex-shrink: 0;
+            border-radius: 4px;
+            background-color: #f0f2f5;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 61'%3E%3Crect x='1.5' y='1.5' width='41' height='58' rx='4' fill='none' stroke='%23d1d5db' stroke-width='1.5'/%3E%3Crect x='5' y='5' width='34' height='22' rx='2' fill='%23e5e7eb'/%3E%3Ccircle cx='22' cy='43' r='7' fill='none' stroke='%23d1d5db' stroke-width='1.5'/%3E%3Cline x1='18' y1='43' x2='26' y2='43' stroke='%23d1d5db' stroke-width='1.5'/%3E%3Cline x1='22' y1='39' x2='22' y2='47' stroke='%23d1d5db' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-size: contain;
+        }
+
+        .msg-card-info { flex: 1; min-width: 0; }
+
+        .msg-card-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #111827;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .msg-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .25rem .75rem;
+            margin-top: .3rem;
+        }
+
+        .msg-meta-item {
+            font-size: .8rem;
+            color: #6b7280;
+        }
+
+        .msg-meta-item strong {
+            color: #374151;
             font-weight: 600;
         }
 
-        .lang-panel { display: none; }
-        .lang-panel.active { display: block; }
-
-        .msg-block { position: relative; }
-        .msg-block textarea {
-            width: 100%;
-            box-sizing: border-box;
-            font-family: inherit;
-            font-size: .9rem;
-            line-height: 1.5;
-            padding: .75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            resize: vertical;
-            background: #fafafa;
+        .msg-card-actions {
+            display: flex;
+            gap: .5rem;
+            flex-shrink: 0;
         }
-        .msg-block .copy-btn {
-            margin-top: .5rem;
-        }
-        .lang-note { font-size: .8rem; color: #6b7280; margin-top: .4rem; }
 
-        .card-summary {
-            display: flex; flex-wrap: wrap; gap: .5rem 1.5rem;
-            padding: .75rem 1rem;
+        /* ---- Messages grid ---- */
+        .msg-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 700px) {
+            .msg-grid { grid-template-columns: 1fr; }
+        }
+
+        .msg-tile {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem 1.1rem 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+            display: flex;
+            flex-direction: column;
+            gap: .6rem;
+        }
+
+        .msg-tile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .msg-lang-label {
+            font-size: .75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #6b7280;
+        }
+
+        .msg-tile textarea {
+            font-family: "Courier New", Courier, monospace;
+            font-size: .8rem;
+            line-height: 1.55;
+            color: #1f2937;
             background: #f9fafb;
             border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            margin-bottom: 1.25rem;
-            font-size: .9rem;
+            border-radius: 5px;
+            resize: vertical;
+            min-height: 180px;
+            padding: .6rem .75rem;
+            width: 100%;
         }
-        .card-summary span { color: #6b7280; }
-        .card-summary strong { color: #111827; }
+
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .3rem .85rem;
+            font-size: .8rem;
+            font-weight: 600;
+            font-family: inherit;
+            background: transparent;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background .12s, color .12s, border-color .12s;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover { background: #eff6ff; border-color: #93c5fd; }
+        .copy-btn.copied { background: #f0fdf4; color: #15803d; border-color: #86efac; }
     </style>
 </head>
 <body>
     <header>
-        <h1><?= $appName ?></h1>
-        <p><a href="index.php">&larr; Back to list</a></p>
+        <h1><a href="index.php" style="color:inherit;text-decoration:none"><?= $appName ?></a></h1>
+        <p>
+            <a href="index.php" class="act-btn">&larr; Powrót do listy</a>
+            &nbsp;
+            <a href="message-templates.php" class="act-btn">&#9998; Edytuj szablony</a>
+            &nbsp;
+            <form method="post" action="logout.php" style="display:inline">
+                <?= Csrf::field() ?>
+                <button type="submit">Wyloguj</button>
+            </form>
+        </p>
     </header>
 
     <main>
-        <h2>Seller messages — <?= e($card['name']) ?></h2>
+        <h2>Wiadomość do sprzedającego</h2>
 
-        <!-- HOW-TO TUTORIAL -->
-        <div class="howto">
-            <h3>📋 How to use these messages</h3>
-            <ol>
-                <li><strong>Find the card</strong> on a marketplace like <em>Cardmarket</em>, <em>eBay</em> or a Facebook collector group.</li>
-                <li><strong>Check the seller's language</strong> — using their language increases your chance of a reply and a better price.</li>
-                <li><strong>Pick the tab</strong> below that matches the seller's country or preferred language.</li>
-                <li><strong>Copy the message</strong> and paste it into the marketplace contact form or private message.</li>
-                <li><strong>Personalise if needed</strong> — add your username or tweak the tone before sending.</li>
-            </ol>
-            <p class="tip">
-                <strong>Tip:</strong> The message is pre-filled with the card name, edition, your target price and current offer price (if set).
-                Update those fields on the <a href="card-edit.php?id=<?= $cardId ?>">card edit page</a> before generating messages.
-            </p>
-        </div>
-
-        <!-- CARD SUMMARY -->
-        <div class="card-summary">
-            <div><span>Card: </span><strong><?= e($card['name']) ?></strong></div>
-            <div><span>Edition: </span><strong><?= e($card['language']) ?><?= $card['country'] ? ' / ' . e($card['country']) : '' ?></strong></div>
-            <div><span>Status: </span><strong><?= e(str_replace('_', ' ', $card['status'])) ?></strong></div>
-            <?php if ($card['target_price'] !== null): ?>
-            <div><span>Budget: </span><strong><?= e(number_format((float) $card['target_price'], 2)) ?> €</strong></div>
+        <!-- CARD INFO BAR -->
+        <div class="msg-card-bar">
+            <?php if (!empty($card['image_url'])): ?>
+            <img src="<?= e($card['image_url']) ?>" alt="" class="msg-card-img">
+            <?php else: ?>
+            <div class="msg-card-img-placeholder"></div>
             <?php endif; ?>
-            <?php if ($card['current_offer_price'] !== null): ?>
-            <div><span>Offer seen: </span><strong><?= e(number_format((float) $card['current_offer_price'], 2)) ?> €</strong></div>
-            <?php endif; ?>
-        </div>
 
-        <!-- LANGUAGE TABS -->
-        <div class="lang-tabs" role="tablist">
-            <?php foreach ($locales as $locale => $label): ?>
-            <button class="lang-tab<?= $locale === 'en' ? ' active' : '' ?>"
-                    role="tab"
-                    onclick="switchLang('<?= e($locale) ?>', this)"
-                    type="button">
-                <?= e($label) ?>
-            </button>
-            <?php endforeach; ?>
-        </div>
+            <div class="msg-card-info">
+                <div class="msg-card-name"><?= e($card['name']) ?></div>
+                <div class="msg-card-meta">
+                    <span class="msg-meta-item"><strong>Język:</strong> <?= e($card['language']) ?></span>
+                    <?php if (!empty($card['country'])): ?>
+                    <span class="msg-meta-item"><strong>Kraj:</strong> <?= e($card['country']) ?></span>
+                    <?php endif; ?>
+                    <span class="msg-meta-item"><strong>Status:</strong> <?= e(statusLabel($card['status'])) ?></span>
+                    <?php if ($card['target_price'] !== null): ?>
+                    <span class="msg-meta-item"><strong>Budżet:</strong> <?= e(number_format((float)$card['target_price'], 2)) ?> €</span>
+                    <?php endif; ?>
+                    <?php if ($card['current_offer_price'] !== null): ?>
+                    <span class="msg-meta-item"><strong>Oferta:</strong> <?= e(number_format((float)$card['current_offer_price'], 2)) ?> €</span>
+                    <?php endif; ?>
+                </div>
+            </div>
 
-        <!-- MESSAGE PANELS -->
-        <?php foreach ($locales as $locale => $label): ?>
-        <div class="lang-panel<?= $locale === 'en' ? ' active' : '' ?>" id="panel-<?= e($locale) ?>">
-            <div class="msg-block">
-                <textarea id="msg-<?= e($locale) ?>" rows="12" readonly><?= e($messages[$locale]) ?></textarea>
-                <button type="button" class="copy-btn" onclick="copyMsg('msg-<?= e($locale) ?>', this)">
-                    Copy message
-                </button>
-                <?php if ($locale === 'ja'): ?>
-                <p class="lang-note">Japanese message — useful when contacting sellers on <em>TCGPlayer Japan</em>, Yahoo Auctions JP or direct Japanese collector groups.</p>
-                <?php elseif ($locale === 'de'): ?>
-                <p class="lang-note">German message — Cardmarket is headquartered in Germany; many high-volume sellers prefer German communication.</p>
-                <?php elseif ($locale === 'fr'): ?>
-                <p class="lang-note">French message — useful for sellers based in France, Belgium or Switzerland.</p>
-                <?php elseif ($locale === 'es'): ?>
-                <p class="lang-note">Spanish message — covers Spain and Latin American sellers.</p>
-                <?php elseif ($locale === 'pt'): ?>
-                <p class="lang-note">Portuguese message — useful for sellers in Portugal and Brazil.</p>
-                <?php else: ?>
-                <p class="lang-note">English is the universal fallback when you are unsure of the seller's language.</p>
-                <?php endif; ?>
+            <div class="msg-card-actions">
+                <a href="card-edit.php?id=<?= $cardId ?>" class="act-btn">Edytuj kartę</a>
             </div>
         </div>
-        <?php endforeach; ?>
 
-        <p style="margin-top:1.5rem"><a href="card-edit.php?id=<?= $cardId ?>">Edit this card</a></p>
+        <!-- MESSAGES GRID -->
+        <div class="msg-grid">
+            <?php foreach ($messages as $code => $msg): ?>
+            <div class="msg-tile">
+                <div class="msg-tile-header">
+                    <span class="msg-lang-label"><?= e($msg['label']) ?></span>
+                    <button type="button" class="copy-btn" onclick="copyMsg('msg-<?= e($code) ?>', this)">
+                        &#128203; Kopiuj
+                    </button>
+                </div>
+                <textarea id="msg-<?= e($code) ?>" readonly><?= e($msg['text']) ?></textarea>
+            </div>
+            <?php endforeach; ?>
+        </div>
     </main>
 
+    <?php require '_flash.php'; ?>
     <script>
-    function switchLang(locale, btn) {
-        document.querySelectorAll('.lang-tab').forEach(function(b) { b.classList.remove('active'); });
-        document.querySelectorAll('.lang-panel').forEach(function(p) { p.classList.remove('active'); });
-        btn.classList.add('active');
-        document.getElementById('panel-' + locale).classList.add('active');
-    }
-
     function copyMsg(id, btn) {
         var el = document.getElementById(id);
         if (!el) return;
-        el.select();
         if (navigator.clipboard) {
-            navigator.clipboard.writeText(el.value).catch(function() { document.execCommand('copy'); });
+            navigator.clipboard.writeText(el.value).catch(function () {
+                el.select(); document.execCommand('copy');
+            });
         } else {
-            document.execCommand('copy');
+            el.select(); document.execCommand('copy');
         }
-        btn.textContent = 'Copied!';
-        setTimeout(function() { btn.textContent = 'Copy message'; }, 2000);
+        btn.textContent = '✓ Skopiowano';
+        btn.classList.add('copied');
+        setTimeout(function () {
+            btn.innerHTML = '&#128203; Kopiuj';
+            btn.classList.remove('copied');
+        }, 2000);
     }
     </script>
 </body>

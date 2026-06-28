@@ -244,15 +244,16 @@ card on the dashboard.
 | Scorer | `src/Card/CardScorer.php` (`calculate`, `explain`) |
 | Dashboard score cell | `public/index.php` (`<details>/<summary>` breakdown) |
 
-Score model (max 100):
-- Language rarity: 0–40 pts (non-EN editions score higher)
-- Status urgency: 0–40 pts (`searching` = highest; `acquired`/`abandoned` = 0)
-- Price pressure: 0–10 pts (lower target price relative to offer = harder)
-- Age in weeks: 0–10 pts (older unresolved cards score higher)
+Score model (active: 0–155, terminal: always 0):
+- Language rarity: 0–35 pts (JP/TH/PT/ID=35; FR/DE/ES/KR/RU/PL/ZH=20; EN=0)
+- Status urgency: 0–40 pts (`searching`=40, `contacted`=25, `offer_received`=10, terminal=0)
+- Price pressure: 0–25 pts (offer > budget=25; budget set no offer=15; no data=8; within budget=0)
+- Age urgency: 0–15 pts (+1 per 5 days unresolved, capped at 15)
+- Market pressure: 0–40 pts (budget/market coverage: ≥100%=0, 85–100%=+10, 70–85%=+20, 50–70%=+30, <50%=+40)
 
 User-visible outcome:
-- Score cell expands inline: `Lang +N · Status +N · Price +N · Age +N`
-- No JavaScript required (`<details>/<summary>` is native HTML)
+- Score badge with tooltip: `Język +N · Status +N · Cena +N · Wiek +N · Rynek +N`
+- Market price refreshed via "Odśwież ceny" button (TCGdex API, Cardmarket avg30 EN)
 
 ---
 

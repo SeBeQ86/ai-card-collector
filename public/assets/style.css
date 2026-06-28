@@ -5,6 +5,7 @@
 
 /* ---- Reset ---- */
 *, *::before, *::after { box-sizing: border-box; }
+main form p { margin: 0; }
 
 /* ---- Variables ---- */
 :root {
@@ -70,7 +71,7 @@ header > p {
 
 /* ---- Layout: main ---- */
 main {
-  max-width: 1060px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
 }
@@ -106,13 +107,21 @@ body.page-login form {
 
 /* ---- Form fields ---- */
 main form { max-width: 580px; }
-main form > p { margin-bottom: 1.1rem; }
+
+main form > p,
+main form > div.field {
+  margin: 0 0 .65rem;
+}
+
+main form > p:last-of-type {
+  margin-top: 1rem;
+}
 
 label {
   display: block;
   font-size: .875rem;
   font-weight: 600;
-  margin-bottom: .3rem;
+  margin-bottom: .25rem;
   color: var(--text);
 }
 
@@ -201,6 +210,7 @@ header button[type="submit"]:hover {
   width: 100%;
   border-collapse: collapse;
   font-size: .875rem;
+  table-layout: fixed;
   background: var(--surface);
   border-radius: var(--radius);
   overflow: hidden;
@@ -222,9 +232,24 @@ header button[type="submit"]:hover {
 }
 
 .card-table td {
-  padding: .65rem 1rem;
+  padding: .55rem .75rem;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Name and next-step columns may wrap */
+.card-table td:nth-child(3),
+.card-table .next-step-cell {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.card-table th {
+  padding: .5rem .75rem;
 }
 
 .card-table tr:last-child td { border-bottom: none; }
@@ -364,6 +389,44 @@ p.error {
   color: #fff;
 }
 
+/* ---- Table action buttons (Edytuj / Wiadomość / Usuń) ---- */
+.actions-cell {
+  white-space: nowrap;
+}
+
+.act-btn {
+  display: inline-block;
+  font-size: .75rem;
+  font-weight: 500;
+  font-family: inherit;
+  padding: .22rem .6rem;
+  border: 1px solid var(--border-md);
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: var(--surface);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1.4;
+  transition: border-color .1s, color .1s;
+}
+
+.act-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.act-btn-danger {
+  color: var(--danger);
+  border-color: #fca5a5;
+}
+
+.act-btn-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ---- Score info tooltip ---- */
 .score-info {
   display: inline-flex;
@@ -403,6 +466,93 @@ p.error {
 
 .score-tooltip.visible { display: block; }
 
+/* ---- Attention box ---- */
+.attention-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius);
+  padding: .85rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.attention-title {
+  font-weight: 700;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #92400e;
+  margin-bottom: .5rem;
+}
+
+.attention-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.attention-list li {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .9rem;
+}
+
+.attention-sep { color: #9ca3af; }
+
+.attention-status {
+  font-size: .72rem;
+  font-weight: 600;
+  padding: .15rem .45rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.attention-searching      { background: #dbeafe; color: #1e40af; }
+.attention-contacted      { background: #fef3c7; color: #92400e; }
+.attention-offer_received { background: #ede9fe; color: #5b21b6; }
+
+/* ---- Table row status colours ---- */
+.row-contacted      td { background: #fffbeb; }
+.row-offer_received td { background: #f5f3ff; }
+.row-acquired       td { background: #f0fdf4; }
+.row-abandoned      td { color: #9ca3af; }
+
+/* ---- Next step cell ---- */
+.next-step-cell { white-space: normal; }
+
+.next-step-link {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+  padding: .2rem .5rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  background: #eff6ff;
+  white-space: normal;
+  display: inline-block;
+  line-height: 1.3;
+}
+
+.next-step-link:hover { background: #dbeafe; }
+
+/* ---- API hint chip ---- */
+.api-hint {
+  font-size: .75rem;
+  font-weight: 600;
+  color: #5b21b6;
+  background: #ede9fe;
+  border: 1px solid #c4b5fd;
+  border-radius: 99px;
+  padding: .2rem .65rem;
+  cursor: help;
+  white-space: nowrap;
+}
+
 /* ---- Quick status select ---- */
 .status-form { margin: 0; }
 
@@ -422,27 +572,53 @@ p.error {
 .status-select.status-acquired       { border-color: #16a34a; color: #16a34a; }
 .status-select.status-abandoned      { border-color: #9ca3af; color: #9ca3af; }
 
-/* ---- Score explanation (details/summary in table) ---- */
-.score-details summary {
-  cursor: pointer;
-  list-style: none;
-  font-weight: 700;
-  color: var(--primary);
+/* ---- Card thumbnail in table ---- */
+.thumb-cell {
+  padding: .3rem .4rem !important;
+  text-align: center;
+  vertical-align: middle;
 }
 
-.score-details summary::-webkit-details-marker { display: none; }
-.score-details summary::marker { display: none; }
-
-.score-details[open] summary { margin-bottom: .2rem; }
-
-.score-details small {
+.card-thumb {
   display: block;
-  font-weight: 400;
-  font-size: .72rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  line-height: 1.4;
+  width: 30px;
+  height: 42px;
+  object-fit: contain;
+  border-radius: 3px;
 }
+
+.card-thumb-placeholder {
+  width: 30px;
+  height: 42px;
+  border-radius: 3px;
+  background-color: #f0f2f5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 42'%3E%3Crect x='1' y='1' width='28' height='40' rx='3' fill='none' stroke='%23d1d5db' stroke-width='1.2'/%3E%3Crect x='4' y='4' width='22' height='15' rx='2' fill='%23e5e7eb'/%3E%3Ccircle cx='15' cy='28' r='5' fill='none' stroke='%23d1d5db' stroke-width='1.2'/%3E%3Cline x1='12' y1='28' x2='18' y2='28' stroke='%23d1d5db' stroke-width='1.2'/%3E%3Cline x1='15' y1='25' x2='15' y2='31' stroke='%23d1d5db' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+/* ---- Score badge ---- */
+.score-cell { text-align: center; padding: .4rem .3rem !important; }
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 24px;
+  padding: 0 .35rem;
+  border-radius: 99px;
+  font-size: .78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.score-none     { background: #f3f4f6; color: #9ca3af; }
+.score-low      { background: #dcfce7; color: #15803d; }
+.score-medium   { background: #fef9c3; color: #854d0e; }
+.score-high     { background: #ffedd5; color: #c2410c; }
+.score-critical { background: #fee2e2; color: #991b1b; }
 
 /* ---- Copy button (card-message page) ---- */
 .copy-btn {
@@ -487,18 +663,186 @@ textarea[readonly] {
   color: var(--text);
 }
 
+/* ---- Shared form sections (card-add / card-edit) ---- */
+.edit-form { max-width: 760px; }
+
+.form-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+.form-section-title {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: #6b7280;
+  margin: 0 0 1rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem 1.25rem;
+}
+
+.field-row.full { grid-template-columns: 1fr; }
+
+.field { display: flex; flex-direction: column; gap: .25rem; }
+
+.field label {
+  font-size: .82rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.field label .req { color: #dc2626; margin-left: .15rem; }
+
+.field input,
+.field select,
+.field textarea {
+  font-size: .9rem;
+  padding: .45rem .7rem;
+}
+
+.field textarea { min-height: 80px; }
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: .5rem;
+}
+
+@media (max-width: 600px) {
+  .field-row { grid-template-columns: 1fr; }
+  .edit-form, #add-form { max-width: 100%; }
+}
+
+/* ---- Flash toast ---- */
+.flash-toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  pointer-events: none;
+}
+
+.flash-msg {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .7rem 1rem;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  font-size: .875rem;
+  font-weight: 500;
+  max-width: 340px;
+  pointer-events: all;
+  animation: flash-in .2s ease;
+}
+
+@keyframes flash-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.flash-success { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+.flash-error   { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+.flash-info    { background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; }
+
+.flash-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+  opacity: .6;
+  padding: 0;
+}
+.flash-close:hover { opacity: 1; }
+
+/* ---- Cancel / Reset buttons ---- */
+.btn-cancel {
+  font-size: .875rem;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.btn-cancel:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.btn-reset {
+  font-size: .75rem;
+  font-family: inherit;
+  padding: .2rem .6rem;
+  border: 1px solid var(--border-md);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.btn-reset:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+/* ---- Market price delta (price-refresh feature) ---- */
+.market-cell {
+  font-variant-numeric: tabular-nums;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+
+.market-delta {
+  display: block;
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.delta-warn     { color: #d97706; }
+.delta-critical { color: #dc2626; }
+.delta-ok       { color: #16a34a; }
+
+/* Refresh button — matches act-btn but with a spinner state */
+#btn-refresh-prices:disabled {
+  opacity: .65;
+  cursor: default;
+}
+
+/* ---- Table scroll wrapper (all viewports) ---- */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 1.25rem;
+}
+
+.table-scroll .card-table {
+  margin-top: 0;
+  min-width: 1020px;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 700px) {
   header  { padding: .75rem 1rem; }
   main    { padding: 1.25rem 1rem; }
-
-  .card-table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
   main form { max-width: 100%; }
-
   body.page-login form { padding: 1.5rem; }
 }
