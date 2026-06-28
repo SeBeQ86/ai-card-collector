@@ -5,6 +5,9 @@
 --   Email:    demo@example.local
 --   Password: demo1234
 --
+-- Hash generated with: php -r "echo password_hash('demo1234', PASSWORD_BCRYPT, ['cost'=>10]);"
+-- This is a DEVELOPMENT-ONLY throwaway credential. Never use in production.
+--
 -- Covers all 5 statuses and a variety of card types so every UI feature
 -- is visible immediately after install.
 

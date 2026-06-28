@@ -35,8 +35,8 @@ jobs:
           PR_DIFF=$(gh pr diff ${{ github.event.pull_request.number }} \
             --repo ${{ github.repository }} 2>/dev/null \
             || git diff origin/${{ github.base_ref }}...HEAD)
-          # Truncate to ~14000 chars to stay within token limits
-          PR_DIFF_TRUNCATED="${PR_DIFF:0:14000}"
+          # Truncate to ~28000 chars to stay within token limits
+          PR_DIFF_TRUNCATED="${PR_DIFF:0:28000}"
           echo "diff<<EOF" >> $GITHUB_OUTPUT
           echo "$PR_DIFF_TRUNCATED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
