@@ -9,7 +9,7 @@ AI Card Collector
 A personal, single-user web application for tracking wanted trading cards.
 The collector logs cards they are searching for, records prices and seller contacts,
 watches a computed difficulty score that prioritises the hardest-to-find cards,
-and generates polite buyer messages in English and Portuguese to send to sellers.
+and generates polite buyer messages in six languages to send to sellers.
 
 Built with plain PHP 8.x, MySQL/MariaDB, server-rendered HTML, and minimal vanilla JS.
 No framework, no Composer packages, no runtime AI dependency.
@@ -33,35 +33,38 @@ No framework, no Composer packages, no runtime AI dependency.
 - [x] **Read** — `public/card-edit.php` (GET) → `CardRepository::findForUser()`
 - [x] **Update** — `public/card-edit.php` (POST) → `CardRepository::updateForUser()`
 - [x] **Delete** — `public/card-delete.php` (POST) → `CardRepository::deleteForUser()`
-- [x] Every query binds `user_id`; cross-user access is structurally impossible
+- [x] Every query binds `user_id`; cross-user access is structurally impossible (IDOR guard tested in `tests/IntegrationTest.php`)
 
 ### Business logic
 - [x] Difficulty score computed by `CardScorer::calculate()` on every create and update
-- [x] Four inputs: language rarity (0–40 pts), status urgency (0–40 pts), price pressure (0–10 pts), age in weeks (0–10 pts); maximum 100
+- [x] Five inputs: language rarity (0–35 pts), status urgency (0–40 pts), price pressure (0–25 pts), age urgency (0–15 pts), market pressure (0–40 pts); maximum 155
 - [x] Terminal statuses `acquired` / `abandoned` always return score 0
 - [x] Score stored in DB; list sorted highest score first
-- [x] Seller message generator: two PHP string templates, locales `en` and `pt`
+- [x] Seller message generator: 6 PHP string templates — EN, DE, FR, ES, PT, JA
 - [x] Messages use card name, language edition, country, prices, and notes
-- [x] No AI API call; no external network call of any kind
+- [x] Custom templates editable per locale in DB (`message-templates.php`); override built-in fallbacks via `{{token}}` substitution
+- [x] No AI API call; no external network call for messages
+- [x] Market prices refreshed on demand via TCGdex API (`api/price-refresh.php`)
 
 ### User-perspective test
-- [x] `docs/manual-test-plan.md` — 10 sections, 40+ numbered steps covering every user flow:
-  login redirects, failed login, successful login, add card, list cards,
-  edit card and status, delete card, generate messages, logout, post-logout access protection
+- [x] `tests/e2e/smoke.spec.ts` — 6 Playwright E2E tests covering: unauthenticated redirect, valid login, wrong password error, dashboard table visible, add-form reachable, session clearance → login redirect
+- [x] `docs/manual-test-plan.md` — 10 sections, 40+ numbered steps covering every user flow
 
 ### CI/CD
 - [x] `.github/workflows/ci.yml` — triggers on `push` and `pull_request`
-- [x] PHP 8.2 via `shivammathur/setup-php`
-- [x] `php -l` syntax checks on `public/`, `src/`, `config/`
+- [x] **Job 1: lint-unit-build** — PHP syntax check (`php -l`), PHPStan level 1, unit tests (`CardScorerTest.php`)
+- [x] **Job 2: integration** — MySQL service container, `IntegrationTest.php` (CardRepository CRUD + IDOR guard, 15 assertions)
+- [x] **Job 3: e2e** — MySQL service container, PHP built-in server, Playwright Chromium (`smoke.spec.ts`)
+- [x] AI Code Review job — Claude Haiku reviews every PR diff and posts a scored comment
 - [x] No automatic deployment; promotion to production is manual
 
 ### Context documents
-- [x] `context/foundation/prd.md` — product requirements
+- [x] `context/foundation/prd.md` — product requirements (FR-001–FR-013)
 - [x] `context/foundation/tech-stack.md` — tech stack hand-off
 - [x] `CLAUDE.md` — project conventions and AI agent rules
-- [x] `AGENTS.md` — writable paths, forbidden actions, mandatory patterns
 - [x] `docs/manual-test-plan.md` — user-flow test plan
 - [x] `docs/deployment.md` — shared-hosting deployment notes
+- [x] `context/deployment/deploy-plan.md` — step-by-step manual deploy checklist with approval gates and rollback
 
 ---
 
@@ -70,7 +73,7 @@ No framework, no Composer packages, no runtime AI dependency.
 1. Clone the repository into XAMPP `htdocs` (e.g. `D:\xampp\htdocs\ai-card-collector`).
 2. Start Apache and MySQL in the XAMPP Control Panel.
 3. Create a database (e.g. `ai_card_collector`) in phpMyAdmin.
-4. Import `database/schema.sql`.
+4. Import `database/schema.sql`, then run migrations `database/migrations/001` through `004` in order.
 5. Generate a bcrypt hash for a throwaway local password:
    ```
    D:\xampp\php\php.exe -r "echo password_hash('your-password', PASSWORD_BCRYPT) . PHP_EOL;"
@@ -99,76 +102,64 @@ Key flows to verify before submission:
 | Add card | Fill form, submit → card in list with difficulty score |
 | Edit card / change status | Update status to `acquired` → score drops to 0 |
 | Delete card | Confirm dialog → card removed from list |
-| Seller messages | Click Message → EN and PT read-only textareas pre-filled |
+| Seller messages | Click Message → 6-language grid with copy buttons |
 | Logout | Click Log out → session gone, back button redirects to login |
 
 ---
 
 ## CI summary
 
-GitHub Actions runs one job (`syntax`) on every push and pull request:
+GitHub Actions runs 4 jobs on every push and pull request:
 
-```
-actions/checkout@v4
-shivammathur/setup-php@v2  (PHP 8.2)
-find public/ -name "*.php" | xargs -n1 php -l
-find src/    -name "*.php" | xargs -n1 php -l
-find config/ -name "*.php" | xargs -n1 php -l
-```
+| Job | What it checks |
+|-----|---------------|
+| lint-unit-build | `php -l` syntax, PHPStan level 1, `CardScorerTest` (3 unit tests) |
+| integration | CardRepository CRUD + IDOR guard against real MySQL (15 assertions) |
+| e2e | 6 Playwright smoke tests against PHP built-in server + MySQL |
+| AI Code Review | Claude Haiku scores the diff and posts a comment on the PR |
 
-No deploy step. No secrets required. Badge can be added to README once the repository is on GitHub.
+Screenshot of all 7 checks passing available in PR #4 on GitHub.
 
 ---
 
 ## Showcase improvements (beyond core MVP)
 
-- **Score breakdown** — clicking the score number in the wanted-cards table expands a compact
-  breakdown: `Lang +N · Status +N · Price +N · Age +N`. Implemented as a `<details>/<summary>`
-  element; no JavaScript required. Powered by `CardScorer::explain(array $card): array`.
-
-- **Copy buttons** — the seller-message page has a **Copy** button below each textarea.
-  Clicking it copies the full message to the clipboard (uses `navigator.clipboard` with an
-  `execCommand` fallback) and briefly shows "Copied!". Textareas remain fully usable without JS.
-
-- **Demo data** — `database/demo-cards.sql` inserts five sample cards (different languages,
-  statuses, prices, and pre-computed scores) for the seeded local user. Useful for populating
-  the app before taking screenshots or running a demo.
+- **TCGdex autocomplete** — card name field in the add/edit form fetches suggestions from `api.tcgdex.net/v2` as you type; selecting a result auto-fills the card image URL and API ID.
+- **Market price refresh** — "Odśwież ceny" button on the wanted list calls `api/price-refresh.php`, which fetches current Cardmarket prices via TCGdex for all active cards with a linked `api_card_id` and recomputes difficulty scores.
+- **6-language seller messages** — EN, DE, FR, ES, PT, JA; displayed in a responsive 2-column grid with per-message copy buttons.
+- **Editable templates** — `message-templates.php` lets the collector customise any locale's template with `{{token}}` placeholders; stored in DB, override built-in fallbacks at render time.
+- **Score breakdown** — clicking the score in the list expands a compact breakdown: `Lang +N · Status +N · Price +N · Age +N · Market +N`.
+- **Deal archive** — `deals.php` lists all acquired cards with purchase price, date, and source URL.
+- **Integration tests** — `tests/IntegrationTest.php` tests CardRepository CRUD and IDOR guard against a real MySQL database in CI.
+- **E2E tests** — `tests/e2e/smoke.spec.ts` (Playwright) runs 6 browser-level smoke tests in CI.
 
 ---
 
 ## Change records
 
-One representative as-built change record is stored in `context/changes/card-priority-scoring/`.
-A representative implementation review is stored in `context/changes/card-priority-scoring/impl-review.md`.
-Risk-based QA strategy is documented in `context/foundation/test-plan.md`.
-`CardScorer` has a minimal automated business-logic guard (`tests/CardScorerTest.php`) that runs in CI on every push.
+Representative as-built change records are stored in `context/changes/`:
+- `card-priority-scoring/` — difficulty score implementation and review
+- `bootstrap-verification/verification.md` — initial project bootstrap check
+
+Risk-based QA strategy: `context/foundation/test-plan.md`.
 
 ---
 
 ## MVP roadmap
 
-The as-built MVP roadmap (foundations, slices, backlog handoff, parked items) is documented in
-`context/foundation/roadmap.md`. It covers 5 foundations (F-01–F-05) and 5 user-visible slices
-(S-01–S-05), all marked Done.
+The as-built MVP roadmap is documented in `context/foundation/roadmap.md`.
+Five foundations (F-01–F-05) and five user-visible slices (S-01–S-05), all marked Done.
 
 ---
 
 ## Deployment planning
 
-Deployment to shared PHP hosting is documented in two read-only context files:
-
-- `context/foundation/infrastructure.md` — platform decision, known risks, anti-bias analysis
-  (devil's advocate, pre-mortem, unknown unknowns), and decision signal for when to move to a
-  VPS or managed platform.
-- `context/deployment/deploy-plan.md` — step-by-step manual deploy checklist with five human
-  approval gates (local verification, CI green, DB backup, web root check, smoke test) and
-  explicit rollback steps.
+- `context/foundation/infrastructure.md` — platform decision, known risks, pre-mortem, anti-bias analysis
+- `context/deployment/deploy-plan.md` — step-by-step manual deploy checklist with five approval gates and rollback steps
 
 ---
 
 ## Known limitations / non-goals
-
-These are intentional boundaries of the MVP scope, not bugs:
 
 | Area | Status |
 |------|--------|
@@ -186,8 +177,8 @@ These are intentional boundaries of the MVP scope, not bugs:
 ## Suggested screenshots for submission
 
 1. **Login page** — shows the form before authentication.
-2. **Wanted cards list** — several cards visible with different difficulty scores, statuses, and the sorted order (highest score first).
-3. **Add card form** — filled in with a non-English language and a target price.
-4. **Edit card form** — status dropdown open, showing all five status values.
-5. **Seller message page** — both EN and PT textareas filled, card summary visible above.
-6. **GitHub Actions run** — CI job passing (green check) on a recent push.
+2. **Wanted cards list** — several cards with different difficulty scores, statuses, sorted highest first.
+3. **Add card form** — filled with a non-English language, target price, and TCGdex autocomplete active.
+4. **Edit card form** — status dropdown open showing all five values; funnel callout visible.
+5. **Seller message page** — 6-language grid with card info bar and copy buttons.
+6. **GitHub Actions run** — all 7 checks green (screenshot from PR #4).

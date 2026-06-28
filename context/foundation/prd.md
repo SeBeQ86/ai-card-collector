@@ -103,6 +103,8 @@ One user. Auth exists for data protection, not multi-tenancy.
   > Socrates: No counter-argument raised; English is the baseline for international seller communication.
 - FR-011: Collector can generate a seller message for a card in Portuguese. Priority: must-have
   > Socrates: Counter-argument considered: "ship English only in MVP, add Portuguese in v2." Resolution: rejected — PT/BR sellers are the primary real-world use case; Portuguese is core, not an enhancement.
+- FR-012: Collector can refresh market prices for all active cards via a single "Odśwież ceny" button that calls the TCGdex API for every card with a linked api_card_id; the difficulty score is recomputed after each refresh. Priority: should-have
+- FR-013: Collector can edit seller message templates per locale (EN, DE, FR, ES, PT, JA) stored in the database; custom templates use {{token}} placeholders and override the built-in PHP fallbacks at render time. Priority: should-have
 
 ## Non-Functional Requirements
 
