@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 $config = require dirname(__DIR__) . '/config/app.php';
 require dirname(__DIR__) . '/src/bootstrap.php';
@@ -293,4 +291,3 @@ function statusLabel(string $status): string
     </script>
 </body>
 </html>
-

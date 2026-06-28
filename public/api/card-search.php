@@ -5,7 +5,7 @@
  *
  * GET /api/card-search.php?q=charizard
  * Auth-gated: returns 401 JSON if session is not authenticated.
- * Returns: JSON array of {id, name, set, image_small}
+ * Returns: JSON array of {id, name, set, image_small, image_large}
  */
 
 $config = require dirname(__DIR__, 2) . '/config/app.php';
@@ -41,4 +41,3 @@ $client = new TcgDexClient($cache);
 $results = $client->searchByName($query);
 
 echo json_encode($results, JSON_UNESCAPED_UNICODE);
-
