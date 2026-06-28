@@ -1,0 +1,22 @@
+{
+  "name": "@przeprogramowani/ai-card-collector-toolkit",
+  "version": "1.0.0",
+  "description": "AI artefacts for AI Card Collector project: skills, rules, review pipeline",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "install.js",
+    "uninstall.js",
+    "skills/",
+    "rules/",
+    ".github/"
+  ],
+  "keywords": ["claude-code", "skills", "ai-toolkit"],
+  "license": "UNLICENSED"
+}
