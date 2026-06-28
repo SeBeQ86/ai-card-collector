@@ -17,57 +17,71 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: review/package-lock.json
+
+      - name: Install review agent dependencies
+        run: npm ci
+        working-directory: review
+
       - name: Get PR diff
         id: diff
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_DIFF=$(gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }} 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD)
-          # Truncate to ~12000 chars to stay within safe token limits
-          PR_DIFF_TRUNCATED="${PR_DIFF:0:12000}"
+          PR_DIFF=$(gh pr diff ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} 2>/dev/null \
+            || git diff origin/${{ github.base_ref }}...HEAD)
+          # Truncate to ~14000 chars to stay within token limits
+          PR_DIFF_TRUNCATED="${PR_DIFF:0:14000}"
           echo "diff<<EOF" >> $GITHUB_OUTPUT
           echo "$PR_DIFF_TRUNCATED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Run AI code review
+      - name: Run AI code review agent
         id: review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          DIFF='${{ steps.diff.outputs.diff }}'
+          echo "${{ steps.diff.outputs.diff }}" | npx tsx review.ts --json > /tmp/review.json 2>/tmp/review.stderr || true
+          cat /tmp/review.stderr >&2 || true
 
-          PAYLOAD=$(jq -n \
-            --arg diff "$DIFF" \
-            --arg title "$PR_TITLE" \
-            '{
-              model: "claude-haiku-4-5-20251001",
-              max_tokens: 1024,
-              messages: [{
-                role: "user",
-                content: ("You are a code reviewer for a PHP 8 project (plain PHP, no framework, MySQL/MariaDB, vanilla JS).\n\nReview this pull request: \"\($title)\"\n\nDiff:\n```\n\($diff)\n```\n\nProvide a concise code review in Markdown. Focus on:\n- Security issues (SQL injection, XSS, CSRF, missing auth gates)\n- PHP correctness (strict types, prepared statements, output escaping)\n- Logic bugs\n- Anything that violates the project rules\n\nIf the code looks good, say so briefly. Be direct and actionable. Max 400 words.")
-              }]
-            }')
+          # Parse JSON verdict and summary
+          VERDICT=$(jq -r '.verdict // "unknown"' /tmp/review.json 2>/dev/null || echo "unknown")
+          SUMMARY=$(jq -r '.summary // "Review unavailable."' /tmp/review.json 2>/dev/null || echo "Review unavailable.")
+          IMPL=$(jq -r '.implementationCorrectness // "?"' /tmp/review.json 2>/dev/null || echo "?")
+          IDIO=$(jq -r '.idiomaticity // "?"' /tmp/review.json 2>/dev/null || echo "?")
+          COMP=$(jq -r '.complexity // "?"' /tmp/review.json 2>/dev/null || echo "?")
+          TEST=$(jq -r '.testRiskCoverage // "?"' /tmp/review.json 2>/dev/null || echo "?")
+          SEC=$(jq -r '.securitySafety // "?"' /tmp/review.json 2>/dev/null || echo "?")
 
-          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-            -H "x-api-key: $ANTHROPIC_API_KEY" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
-            -d "$PAYLOAD")
-
-          REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text // "⚠️ Code review unavailable (API error)."')
-
-          echo "review<<EOF" >> $GITHUB_OUTPUT
-          echo "$REVIEW" >> $GITHUB_OUTPUT
+          echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "scores=Poprawność: $IMPL/10 | Idiomatyczność: $IDIO/10 | Złożoność: $COMP/10 | Testy: $TEST/10 | Bezpieczeństwo: $SEC/10" >> $GITHUB_OUTPUT
+        working-directory: review
 
       - name: Post review comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          COMMENT="## 🤖 AI Code Review
+          VERDICT="${{ steps.review.outputs.verdict }}"
+          if [ "$VERDICT" = "pass" ]; then
+            BADGE="✅ **PASS**"
+          else
+            BADGE="❌ **FAIL**"
+          fi
 
-          ${{ steps.review.outputs.review }}
+          COMMENT="## 🤖 AI Code Review — $BADGE
+
+          ${{ steps.review.outputs.scores }}
+
+          ${{ steps.review.outputs.summary }}
 
           ---
           *Powered by Claude Haiku · [workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*"

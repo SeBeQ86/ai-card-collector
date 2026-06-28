@@ -1,0 +1,161 @@
+# promptfoo eval — AI Card Collector code review agent
+# Usage: npx promptfoo eval
+# Requires: OPENROUTER_API_KEY env var (one key for all models)
+# Or: ANTHROPIC_API_KEY for direct Anthropic access
+
+description: "Compare code review quality across models"
+
+# Models to compare side-by-side
+providers:
+  - id: openrouter:anthropic/claude-haiku-4-5           # fast + cheap (production default)
+    label: "Haiku 4.5"
+  - id: openrouter:anthropic/claude-sonnet-4-6          # stronger reasoning
+    label: "Sonnet 4.6"
+  - id: openrouter:deepseek/deepseek-chat-v3-0324        # cheap alternative
+    label: "DeepSeek v3"
+
+# System prompt — same as review-schema.ts SYSTEM_PROMPT
+prompts:
+  - label: "PHP security review"
+    raw: |
+      Jesteś precyzyjnym, konstruktywnym recenzentem kodu dla projektu AI Card Collector.
+      Stack projektu: PHP 8.x, MySQL/MariaDB, vanilla JS, brak frameworka.
+
+      Oceniasz diff w pięciu kryteriach (skala 1-10):
+      - implementationCorrectness: Poprawność implementacji
+      - idiomaticity: Idiomatyczność PHP 8.x i konwencje repo
+      - complexity: Złożoność rozwiązania
+      - testRiskCoverage: Pokrycie testami proporcjonalne do ryzyka
+      - securitySafety: Bezpieczeństwo (PDO, CSRF, htmlspecialchars, brak eval/exec)
+
+      Reguły projektu:
+      - Każdy plik PHP musi zaczynać się od <?php declare(strict_types=1);
+      - Każde zapytanie SQL: PDO prepared statements (zero string concatenation)
+      - Każda wartość w HTML: htmlspecialchars($v, ENT_QUOTES, 'UTF-8')
+      - Każdy POST form: walidacja CSRF tokenu
+
+      Odpowiedz WYŁĄCZNIE jako JSON bez żadnego dodatkowego tekstu:
+      {
+        "implementationCorrectness": <1-10>,
+        "idiomaticity": <1-10>,
+        "complexity": <1-10>,
+        "testRiskCoverage": <1-10>,
+        "securitySafety": <1-10>,
+        "verdict": "pass" | "fail",
+        "summary": "<2-3 zdania po polsku>"
+      }
+
+      Zrecenzuj ten diff:
+
+      {{diff}}
+
+# Test cases — each diff is a separate scenario
+tests:
+  # TC-01: SQL injection vulnerability — should fail
+  - description: "SQL injection in user input"
+    vars:
+      diff: |
+        diff --git a/public/card-search.php b/public/card-search.php
+        --- a/public/card-search.php
+        +++ b/public/card-search.php
+        @@ -0,0 +1,15 @@
+        +<?php declare(strict_types=1);
+        +require_once __DIR__ . '/../src/bootstrap.php';
+        +
+        +\App\Auth\Auth::requireAuth();
+        +$db = \App\Database\Connection::get();
+        +$search = $_GET['q'] ?? '';
+        +
+        +// Search cards by name
+        +$stmt = $db->query("SELECT * FROM wanted_cards WHERE name LIKE '%" . $search . "%'");
+        +$cards = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        +
+        +foreach ($cards as $card) {
+        +    echo "<li>" . $card['name'] . "</li>";
+        +}
+    assert:
+      - type: is-json
+        description: "Response must be valid JSON"
+      - type: javascript
+        value: |
+          const r = JSON.parse(output);
+          return r.verdict === 'fail';
+        description: "SQL injection must result in FAIL verdict"
+      - type: javascript
+        value: |
+          const r = JSON.parse(output);
+          return r.securitySafety <= 3;
+        description: "Security score must be <= 3 for SQL injection"
+      - type: llm-rubric
+        value: "Review identifies SQL injection vulnerability and missing output escaping"
+        description: "LLM judge: review must name the SQL injection and XSS risks"
+
+  # TC-02: clean refactor — should pass
+  - description: "Clean refactor — extract age helper"
+    vars:
+      diff: |
+        diff --git a/src/Card/CardScorer.php b/src/Card/CardScorer.php
+        --- a/src/Card/CardScorer.php
+        +++ b/src/Card/CardScorer.php
+        @@ -59,6 +59,14 @@ final class CardScorer
+             }
+         }
+        +
+        +    public static function ageInDays(string $createdAt): int
+        +    {
+        +        $ts = strtotime($createdAt);
+        +        if ($ts === false) {
+        +            return 0;
+        +        }
+        +        return (int) round((time() - $ts) / 86400);
+        +    }
+         }
+    assert:
+      - type: is-json
+        description: "Response must be valid JSON"
+      - type: javascript
+        value: |
+          const r = JSON.parse(output);
+          return r.verdict === 'pass';
+        description: "Clean refactor should pass"
+      - type: javascript
+        value: |
+          const r = JSON.parse(output);
+          return r.securitySafety >= 8;
+        description: "No security issues — score >= 8"
+
+  # TC-03: missing declare(strict_types=1) + missing CSRF
+  - description: "Missing strict types and CSRF token"
+    vars:
+      diff: |
+        diff --git a/public/card-note.php b/public/card-note.php
+        --- /dev/null
+        +++ b/public/card-note.php
+        @@ -0,0 +1,20 @@
+        +<?php
+        +require_once __DIR__ . '/../src/bootstrap.php';
+        +
+        +\App\Auth\Auth::requireAuth();
+        +$user = \App\Auth\Auth::user();
+        +$db = \App\Database\Connection::get();
+        +
+        +if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        +    $cardId = (int) $_POST['card_id'];
+        +    $note = $_POST['note'] ?? '';
+        +
+        +    $stmt = $db->prepare('UPDATE wanted_cards SET notes = ? WHERE id = ? AND user_id = ?');
+        +    $stmt->execute([$note, $cardId, $user['id']]);
+        +    header('Location: index.php');
+        +    exit;
+        +}
+    assert:
+      - type: is-json
+        description: "Response must be valid JSON"
+      - type: javascript
+        value: |
+          const r = JSON.parse(output);
+          return r.verdict === 'fail';
+        description: "Missing strict_types + CSRF should fail"
+      - type: llm-rubric
+        value: "Review mentions missing declare(strict_types=1) and missing CSRF token validation"
+        description: "LLM judge: review must catch both strict types and CSRF omissions"
