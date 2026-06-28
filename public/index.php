@@ -72,6 +72,8 @@ function formatPrice(?string $value): string
         <h1><?= $appName ?></h1>
         <p>Logged in as: <strong><?= $userEmail ?></strong>
             &nbsp;
+            <a href="deals.php" style="font-size:.85rem">Deal archive</a>
+            &nbsp;
             <form method="post" action="logout.php" style="display:inline">
                 <?= Csrf::field() ?>
                 <button type="submit">Log out</button>
@@ -165,7 +167,10 @@ function formatPrice(?string $value): string
                                 </select>
                             </form>
                         </td>
-                        <td><?= htmlspecialchars(substr((string) $card['created_at'], 0, 10), ENT_QUOTES, 'UTF-8') ?></td>
+                        <td><?php
+                            $ts = strtotime((string) $card['created_at']);
+                            echo $ts !== false ? date('j M Y', $ts) : htmlspecialchars(substr((string) $card['created_at'], 0, 10), ENT_QUOTES, 'UTF-8');
+                        ?></td>
                         <td>
                             <a href="card-edit.php?id=<?= (int) $card['id'] ?>">Edit</a>
                             <a href="card-message.php?id=<?= (int) $card['id'] ?>">Message</a>

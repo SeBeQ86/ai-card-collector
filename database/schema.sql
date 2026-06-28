@@ -22,10 +22,15 @@ CREATE TABLE wanted_cards (
     id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id             INT UNSIGNED NOT NULL,
     name                VARCHAR(255) NOT NULL,
+    api_card_id         VARCHAR(50)  DEFAULT NULL,
     language            VARCHAR(100) NOT NULL,
     country             VARCHAR(100) DEFAULT NULL,
     target_price        DECIMAL(10,2) DEFAULT NULL,
     current_offer_price DECIMAL(10,2) DEFAULT NULL,
+    purchase_price      DECIMAL(10,2) DEFAULT NULL,
+    purchased_at        DATE         DEFAULT NULL,
+    source_url          VARCHAR(500) DEFAULT NULL,
+    seller_name         VARCHAR(255) DEFAULT NULL,
     status              ENUM(
                             'searching',
                             'contacted',
@@ -45,6 +50,17 @@ CREATE TABLE wanted_cards (
         FOREIGN KEY (user_id) REFERENCES users(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE api_cache (
+    id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    cache_key     VARCHAR(255) NOT NULL,
+    response_json MEDIUMTEXT   NOT NULL,
+    fetched_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at    DATETIME     NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_api_cache_key (cache_key),
+    KEY idx_api_cache_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
