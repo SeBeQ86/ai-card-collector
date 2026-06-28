@@ -26,29 +26,22 @@ jobs:
         working-directory: review
 
       - name: Get PR diff
-        id: diff
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_DIFF=$(gh pr diff ${{ github.event.pull_request.number }} \
-            --repo ${{ github.repository }} 2>/dev/null \
-            || git diff origin/${{ github.base_ref }}...HEAD)
-          # Truncate to ~14000 chars to stay within token limits
-          PR_DIFF_TRUNCATED="${PR_DIFF:0:14000}"
-          echo "diff<<EOF" >> $GITHUB_OUTPUT
-          echo "$PR_DIFF_TRUNCATED" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          gh pr diff ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} > /tmp/pr_diff.txt 2>/dev/null \
+            || git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr_diff.txt
+          truncate -s 14000 /tmp/pr_diff.txt 2>/dev/null || true
 
       - name: Run AI code review agent
         id: review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          echo "${{ steps.diff.outputs.diff }}" | npx tsx review.ts --json > /tmp/review.json 2>/tmp/review.stderr || true
+          cat /tmp/pr_diff.txt | npx tsx review.ts --json > /tmp/review.json 2>/tmp/review.stderr || true
           cat /tmp/review.stderr >&2 || true
 
-          # Parse JSON verdict and summary
           VERDICT=$(jq -r '.verdict // "unknown"' /tmp/review.json 2>/dev/null || echo "unknown")
           SUMMARY=$(jq -r '.summary // "Review unavailable."' /tmp/review.json 2>/dev/null || echo "Review unavailable.")
           IMPL=$(jq -r '.implementationCorrectness // "?"' /tmp/review.json 2>/dev/null || echo "?")
@@ -58,10 +51,10 @@ jobs:
           SEC=$(jq -r '.securitySafety // "?"' /tmp/review.json 2>/dev/null || echo "?")
 
           echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "summary<<SUMMARY_EOF" >> $GITHUB_OUTPUT
           echo "$SUMMARY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "scores=Poprawność: $IMPL/10 | Idiomatyczność: $IDIO/10 | Złożoność: $COMP/10 | Testy: $TEST/10 | Bezpieczeństwo: $SEC/10" >> $GITHUB_OUTPUT
+          echo "SUMMARY_EOF" >> $GITHUB_OUTPUT
+          echo "scores=Impl:$IMPL Idio:$IDIO Complexity:$COMP Tests:$TEST Security:$SEC" >> $GITHUB_OUTPUT
         working-directory: review
 
       - name: Post review comment
