@@ -12,7 +12,7 @@ Najpierw zaproponuj plan. Modyfikuj tylko pliki potrzebne do danego kroku. Zacho
 
 Nie implementuj:
 
-- integracji z Cardmarket API ani scrapowania marketplace'ów
+- integracji z Cardmarket API ani scrapowania marketplace'ów (dozwolone: odczyt cen referencyjnych przez TCGdex API jako agregator danych kart)
 - płatności
 - publicznych profili lub wymiany kart między użytkownikami
 - aplikacji mobilnej
@@ -74,11 +74,14 @@ These are non-negotiable on every change:
 **Wanted card status** (stored lowercase in DB, strict enum in PHP):
 `searching` | `contacted` | `offer_received` | `acquired` | `abandoned`
 
-**Difficulty score** — computed on save, stored in `difficulty_score` (INT). Inputs (FR-008):
-1. Language rarity — non-EN editions (JP, PT, TH, …) score higher
-2. Status — `searching` → hardest; `offer_received` → easier; `acquired`/`abandoned` → zero urgency
-3. Price limit — lower `target_price` relative to typical market value → harder
-4. Age — days since `created_at`; older unresolved cards score higher urgency
+**Difficulty score** — computed on save, stored in `difficulty_score` (INT). Range: active cards **0–155**, terminal (acquired/abandoned) always **0**. Inputs (FR-008 + market extension):
+1. Language rarity (0–35) — JP/TH/PT/ID=35, FR/DE/ES/KR/RU/PL/ZH=20, EN=0
+2. Status urgency (0–40) — `searching`=40, `contacted`=25, `offer_received`=10, terminal=0
+3. Price pressure (0–25) — offer > budget=25, budget set but no offer=15, no data=8, within budget=0
+4. Age urgency (0–15) — +1 per 5 days unresolved, capped at 15
+5. Market pressure (0–40) — budget/market coverage: ≥100%=0, 85–100%=+10, 70–85%=+20, 50–70%=+30, <50%=+40; requires `market_price` to be set
+
+`market_price` and `market_price_at` are refreshed via "Odśwież ceny" button (POST `api/price-refresh.php`) which calls TCGdex API for all active cards with a linked `api_card_id`. Score is recomputed on each refresh.
 
 **Seller message templates** (FR-010, FR-011):
 - Two PHP string templates, one per locale: `en`, `pt`
@@ -99,5 +102,6 @@ These are non-negotiable on every change:
 - Bootstrap verification: `context/changes/bootstrap-verification/verification.md`
 - Business rules: `docs/business-rules.md`
 - DB schema: `database/schema.sql`
+- Migrations: `database/migrations/` (001–004; run in order on a fresh install)
 
 Skills must not write to `context/archive/`. Archived changes are immutable. If a target path starts with `context/archive/`, abort: "This change is archived. Open a new change with `/10x-new` instead."

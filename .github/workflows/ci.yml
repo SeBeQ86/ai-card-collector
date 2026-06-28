@@ -5,8 +5,8 @@ on:
   pull_request:
 
 jobs:
-  syntax:
-    name: PHP syntax check
+  lint-unit-build:
+    name: Lint, unit tests & build check
     runs-on: ubuntu-latest
 
     steps:
@@ -16,7 +16,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          tools: none
+          tools: phpstan
           coverage: none
 
       - name: Check syntax — public/
@@ -28,5 +28,127 @@ jobs:
       - name: Check syntax — config/
         run: find config/ -name "*.php" -print0 | xargs -0 -n1 php -l
 
+      - name: PHPStan static analysis
+        run: phpstan analyse --no-progress
+
       - name: Run CardScorer business-logic guard
         run: php tests/CardScorerTest.php
+
+      - name: Run ApiCache unit tests
+        run: php tests/ApiCacheTest.php
+
+      - name: Run TcgDexClient unit tests
+        run: php tests/TcgDexClientTest.php
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ai_card_collector_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: ai_card_collector_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql
+          coverage: none
+
+      - name: Import schema
+        run: mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test < database/schema.sql
+
+      - name: Run integration tests
+        run: php tests/IntegrationTest.php
+
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ai_card_collector_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: ai_card_collector_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      APP_URL: http://localhost:8080
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql
+          coverage: none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Import schema and seed CI test user
+        run: |
+          mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test < database/schema.sql
+          HASH=$(php -r "echo password_hash('testpass123', PASSWORD_BCRYPT);")
+          mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test \
+            -e "INSERT INTO users (email, password_hash) VALUES ('test@ci.local', '$HASH')"
+          USER_ID=$(mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test -sN \
+            -e "SELECT id FROM users WHERE email='test@ci.local'")
+          mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test \
+            -e "INSERT INTO wanted_cards (user_id, name, language, status, difficulty_score) VALUES ($USER_ID, 'Charizard', 'English', 'searching', 48)"
+
+      - name: Start PHP built-in server
+        run: php -S localhost:8080 -t public/ &
+
+      - name: Wait for PHP server
+        run: |
+          for i in $(seq 1 10); do
+            curl -sf http://localhost:8080/login.php && break
+            sleep 1
+          done
+
+      - name: Install Playwright dependencies
+        run: npm install
+        working-directory: tests/e2e
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: tests/e2e
+
+      - name: Run E2E smoke tests
+        run: npx playwright test
+        working-directory: tests/e2e

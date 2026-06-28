@@ -15,7 +15,9 @@ final class CardRepository
                     target_price, current_offer_price,
                     purchase_price, purchased_at, source_url, seller_name,
                     status, difficulty_score,
-                    seller_contact, notes, created_at
+                    seller_contact, notes, image_url,
+                    market_price, market_price_at,
+                    created_at, updated_at
              FROM   wanted_cards
              WHERE  user_id = ?
              ORDER  BY difficulty_score DESC, created_at ASC'
@@ -29,7 +31,7 @@ final class CardRepository
         $stmt = $this->pdo->prepare(
             'SELECT id, name, api_card_id, language, country,
                     target_price, purchase_price, purchased_at,
-                    source_url, seller_name, seller_contact, notes, created_at
+                    source_url, seller_name, seller_contact, notes, image_url, created_at
              FROM   wanted_cards
              WHERE  user_id = ? AND status = \'acquired\'
              ORDER  BY purchased_at DESC, created_at DESC'
@@ -45,7 +47,9 @@ final class CardRepository
                     target_price, current_offer_price,
                     purchase_price, purchased_at, source_url, seller_name,
                     status, difficulty_score,
-                    seller_contact, notes, created_at
+                    seller_contact, notes, image_url,
+                    market_price, market_price_at,
+                    created_at, updated_at
              FROM   wanted_cards
              WHERE  id = ? AND user_id = ?
              LIMIT  1'
@@ -72,6 +76,7 @@ final class CardRepository
                     status              = ?,
                     seller_contact      = ?,
                     notes               = ?,
+                    image_url           = ?,
                     difficulty_score    = ?
              WHERE  id = ? AND user_id = ?'
         );
@@ -89,10 +94,43 @@ final class CardRepository
             $data['status'],
             $data['seller_contact'],
             $data['notes'],
+            $data['image_url'] ?? null,
             $data['difficulty_score'],
             $cardId,
             $userId,
         ]);
+        return $stmt->rowCount() > 0;
+    }
+
+    /** Returns active (non-terminal) cards that have an api_card_id — used for price refresh. */
+    public function listActiveWithApiId(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id, name, api_card_id, language, status,
+                    target_price, current_offer_price, difficulty_score, created_at
+             FROM   wanted_cards
+             WHERE  user_id = ?
+               AND  api_card_id IS NOT NULL
+               AND  status NOT IN (\'acquired\', \'abandoned\')
+             ORDER  BY id ASC'
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Update market_price, market_price_at, difficulty_score and image_url for one card.
+     *  COALESCE guards: existing DB value is kept when the API returns null. */
+    public function updateMarketPrice(int $userId, int $cardId, ?float $marketPrice, int $score, ?string $imageUrl = null): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE wanted_cards
+             SET    market_price     = COALESCE(?, market_price),
+                    market_price_at  = NOW(),
+                    difficulty_score = ?,
+                    image_url        = COALESCE(?, image_url)
+             WHERE  id = ? AND user_id = ?'
+        );
+        $stmt->execute([$marketPrice, $score, $imageUrl, $cardId, $userId]);
         return $stmt->rowCount() > 0;
     }
 
@@ -112,8 +150,9 @@ final class CardRepository
             'INSERT INTO wanted_cards
                 (user_id, name, api_card_id, language, country,
                  target_price, current_offer_price,
-                 status, seller_contact, notes, difficulty_score)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                 purchase_price, purchased_at, source_url, seller_name,
+                 status, seller_contact, notes, image_url, difficulty_score)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $userId,
@@ -123,9 +162,14 @@ final class CardRepository
             $data['country'],
             $data['target_price'],
             $data['current_offer_price'],
+            $data['purchase_price'] ?? null,
+            $data['purchased_at'] ?? null,
+            $data['source_url'] ?? null,
+            $data['seller_name'] ?? null,
             $data['status'],
             $data['seller_contact'],
             $data['notes'],
+            $data['image_url'] ?? null,
             $data['difficulty_score'],
         ]);
         return (int) $this->pdo->lastInsertId();

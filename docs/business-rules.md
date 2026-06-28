@@ -2,13 +2,17 @@
 
 ## BR-001: Scoring trudności zdobycia karty
 
-System wylicza trudność zdobycia karty na podstawie kilku prostych sygnałów:
+System wylicza trudność zdobycia karty na podstawie pięciu sygnałów (zakres: aktywne 0–155, terminalne zawsze 0):
 
-- trudny język karty,
-- status problemowy,
-- przekroczony limit ceny,
-- długi czas poszukiwania,
-- brak danych sprzedawcy lub źródła.
+| Składnik | Zakres | Logika |
+|---|---|---|
+| Język karty | 0–35 | JP/TH/PT/ID=35; FR/DE/ES/KR/RU/PL/ZH=20; EN=0 |
+| Status | 0–40 | searching=40; contacted=25; offer_received=10; acquired/abandoned=0 |
+| Presja cenowa | 0–25 | oferta > limit=25; limit bez oferty=15; brak danych=8; w limicie=0 |
+| Wiek wpisu | 0–15 | +1 za każde 5 dni bez rozwiązania, max 15 |
+| Presja rynkowa | 0–40 | pokrycie = limit/cena_rynkowa: ≥100%=0; 85–100%=+10; 70–85%=+20; 50–70%=+30; <50%=+40 |
+
+Cena rynkowa (`market_price`) pochodzi z TCGdex API (Cardmarket avg30). Presja rynkowa wynosi 0, jeśli cena rynkowa nie jest znana.
 
 ## BR-002: Priorytet
 

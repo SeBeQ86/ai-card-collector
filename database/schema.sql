@@ -41,6 +41,9 @@ CREATE TABLE wanted_cards (
     difficulty_score    INT UNSIGNED NOT NULL DEFAULT 0,
     seller_contact      VARCHAR(255) DEFAULT NULL,
     notes               TEXT DEFAULT NULL,
+    image_url           VARCHAR(500) DEFAULT NULL,
+    market_price        DECIMAL(10,2) DEFAULT NULL,
+    market_price_at     DATETIME     DEFAULT NULL,
     created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -61,6 +64,15 @@ CREATE TABLE api_cache (
     PRIMARY KEY (id),
     UNIQUE KEY uq_api_cache_key (cache_key),
     KEY idx_api_cache_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE message_templates (
+    id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    locale     VARCHAR(10)  NOT NULL,
+    body       TEXT         NOT NULL,
+    updated_at DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_message_templates_locale (locale)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
