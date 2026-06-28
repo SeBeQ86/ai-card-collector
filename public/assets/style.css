@@ -1,0 +1,366 @@
+/* ================================================================
+   AI Card Collector — stylesheet
+   Plain CSS. No framework, no CDN, no build step.
+   ================================================================ */
+
+/* ---- Reset ---- */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ---- Variables ---- */
+:root {
+  --bg:          #f3f4f6;
+  --surface:     #ffffff;
+  --border:      #e5e7eb;
+  --border-md:   #d1d5db;
+  --text:        #111827;
+  --text-muted:  #6b7280;
+  --primary:     #2563eb;
+  --primary-h:   #1d4ed8;
+  --danger:      #dc2626;
+  --danger-h:    #b91c1c;
+  --radius:      6px;
+  --shadow:      0 1px 4px rgba(0, 0, 0, .08);
+}
+
+/* ---- Base ---- */
+html { font-size: 16px; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3 { line-height: 1.25; margin: 0 0 .75rem; }
+h1 { font-size: 1.3rem; font-weight: 700; }
+h2 { font-size: 1.1rem; font-weight: 600; }
+h3 { font-size: .95rem; font-weight: 600; }
+
+p { margin: 0 0 .75rem; }
+p:last-child { margin-bottom: 0; }
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- Layout: header ---- */
+header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: .85rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+header h1 { margin: 0; }
+
+header > p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: .875rem;
+  color: var(--text-muted);
+}
+
+/* ---- Layout: main ---- */
+main {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* ---- Login page ---- */
+body.page-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+body.page-login h1 {
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+body.page-login form {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ---- Form fields ---- */
+main form { max-width: 580px; }
+main form > p { margin-bottom: 1.1rem; }
+
+label {
+  display: block;
+  font-size: .875rem;
+  font-weight: 600;
+  margin-bottom: .3rem;
+  color: var(--text);
+}
+
+label span[aria-label="required"] {
+  color: var(--danger);
+  margin-left: .15rem;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  padding: .5rem .75rem;
+  font-size: .95rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
+textarea { resize: vertical; line-height: 1.5; }
+
+/* ---- Buttons ---- */
+/* Base: primary blue — applies to form submit buttons generally */
+button[type="submit"] {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  padding: .55rem 1.35rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  transition: background .15s;
+}
+
+button[type="submit"]:hover { background: var(--primary-h); }
+
+/* Log out button — small, muted, in header */
+header button[type="submit"] {
+  padding: .28rem .8rem;
+  font-size: .8rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-md);
+}
+
+header button[type="submit"]:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Delete button — danger style, in table */
+.card-table button[type="submit"] {
+  padding: .22rem .6rem;
+  font-size: .78rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.card-table button[type="submit"]:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ---- Wanted cards table ---- */
+.card-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .875rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  margin-top: 1.25rem;
+}
+
+.card-table th {
+  background: #f9fafb;
+  border-bottom: 2px solid var(--border);
+  padding: .6rem 1rem;
+  text-align: left;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.card-table td {
+  padding: .65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.card-table tr:last-child td { border-bottom: none; }
+.card-table tbody tr:hover { background: #fafafa; }
+
+/* Score column — prominent */
+.card-table td:first-child {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  text-align: center;
+}
+
+.card-table th:first-child { text-align: center; }
+
+/* Actions column */
+.card-table td:last-child { white-space: nowrap; }
+
+/* Action links (Edit, Message) styled as small pill buttons */
+.card-table a {
+  display: inline-block;
+  font-size: .78rem;
+  padding: .22rem .6rem;
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  margin-right: .3rem;
+  transition: border-color .12s, color .12s;
+}
+
+.card-table a:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  text-decoration: none;
+}
+
+/* ---- Errors ---- */
+.errors {
+  list-style: none;
+  padding: .75rem 1rem;
+  margin: 0 0 1.25rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: .9rem;
+}
+
+.errors li + li { margin-top: .25rem; }
+
+p.error {
+  padding: .65rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: .9rem;
+}
+
+/* ---- Score explanation (details/summary in table) ---- */
+.score-details summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.score-details summary::-webkit-details-marker { display: none; }
+.score-details summary::marker { display: none; }
+
+.score-details[open] summary { margin-bottom: .2rem; }
+
+.score-details small {
+  display: block;
+  font-weight: 400;
+  font-size: .72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* ---- Copy button (card-message page) ---- */
+.copy-btn {
+  display: inline-block;
+  margin-top: .5rem;
+  padding: .3rem .9rem;
+  font-size: .82rem;
+  font-weight: 500;
+  font-family: inherit;
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+
+.copy-btn:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ---- Card message page ---- */
+section + section { margin-top: 1.75rem; }
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: .3rem 1.25rem;
+  margin: .5rem 0 1.25rem;
+  font-size: .9rem;
+}
+
+dt { font-weight: 600; color: var(--text-muted); }
+dd { margin: 0; }
+
+textarea[readonly] {
+  background: #f9fafb;
+  font-family: "Courier New", Courier, monospace;
+  font-size: .85rem;
+  min-height: 210px;
+  color: var(--text);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 700px) {
+  header  { padding: .75rem 1rem; }
+  main    { padding: 1.25rem 1rem; }
+
+  .card-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main form { max-width: 100%; }
+
+  body.page-login form { padding: 1.5rem; }
+}

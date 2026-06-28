@@ -1,0 +1,5 @@
+# Safety fallback only.
+# The intended production web root is public/.
+# If Apache is accidentally pointed at the project root,
+# deny direct access to config/, src/, database/, context/, docs/, .claude/, etc.
+Require all denied

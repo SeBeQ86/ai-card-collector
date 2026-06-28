@@ -1,0 +1,7 @@
+{
+    "name": "app/app",
+    "description": "Plain PHP 8.x web app",
+    "require": {
+        "php": "^8.0"
+    }
+}

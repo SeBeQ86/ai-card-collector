@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  syntax:
+    name: PHP syntax check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: none
+          coverage: none
+
+      - name: Check syntax — public/
+        run: find public/ -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: Check syntax — src/
+        run: find src/ -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: Check syntax — config/
+        run: find config/ -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: Run CardScorer business-logic guard
+        run: php tests/CardScorerTest.php

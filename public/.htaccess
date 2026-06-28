@@ -1,0 +1,5 @@
+# public/ is the only intended web-accessible directory.
+Require all granted
+
+# Disable directory listing.
+Options -Indexes
