@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 const EMAIL    = process.env['CI_TEST_EMAIL']    ?? 'test@ci.local';
 const PASSWORD = process.env['CI_TEST_PASSWORD'] ?? 'testpass123';
 
-async function login(page: import('@playwright/test').Page) {
+async function login(page: Page) {
   await page.goto('/login.php');
   await page.fill('input[name="email"]',    EMAIL);
   await page.fill('input[name="password"]', PASSWORD);
