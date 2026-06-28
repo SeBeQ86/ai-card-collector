@@ -22,7 +22,7 @@ jobs:
           node-version: '22'
 
       - name: Install review agent dependencies
-        run: npm ci
+        run: npm install
         working-directory: review
 
       - name: Get PR diff
