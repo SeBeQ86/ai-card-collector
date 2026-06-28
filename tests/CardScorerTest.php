@@ -86,31 +86,31 @@ assert_eq(0, CardScorer::calculate('EN', 'abandoned', 10.0, 5.0, 100),
 
 echo "\n-- Active card returns non-negative score --\n";
 
-$active = CardScorer::calculate('EN', 'searching', null, null, 0);
+$active = CardScorer::calculate('English', 'searching', null, null, 0);
 assert_true($active >= 0, 'searching returns non-negative score');
 
-$active = CardScorer::calculate('EN', 'contacted', null, null, 0);
+$active = CardScorer::calculate('English', 'contacted', null, null, 0);
 assert_true($active >= 0, 'contacted returns non-negative score');
 
-$active = CardScorer::calculate('EN', 'offer_received', null, null, 0);
+$active = CardScorer::calculate('English', 'offer_received', null, null, 0);
 assert_true($active >= 0, 'offer_received returns non-negative score');
 
 // ---------------------------------------------------------------------------
-// Group 3: Language rarity ordering  (documented: non-EN = 40 pts, EN = 0 pts)
+// Group 3: Language rarity ordering  (documented: JP/TH/PT/ID = 35 pts, EN = 0 pts)
 // ---------------------------------------------------------------------------
 
 echo "\n-- Language rarity --\n";
 
 // Same status, price, age — only language differs
-$jpScore = CardScorer::calculate('JP', 'searching', null, null, 0);
-$enScore = CardScorer::calculate('EN', 'searching', null, null, 0);
+$jpScore = CardScorer::calculate('Japanese', 'searching', null, null, 0);
+$enScore = CardScorer::calculate('English',  'searching', null, null, 0);
 assert_true($jpScore > $enScore,
-    'JP card scores higher than EN card (all other factors equal)');
+    'Japanese card scores higher than English card (all other factors equal)');
 
-// "english" spelled out must also be recognised as the zero-rarity language
-$englishScore = CardScorer::calculate('english', 'searching', null, null, 0);
-assert_eq($enScore, $englishScore,
-    '"english" and "en" produce the same score');
+// Case-insensitive: "JAPANESE" must equal "Japanese"
+$upperScore = CardScorer::calculate('JAPANESE', 'searching', null, null, 0);
+assert_eq($jpScore, $upperScore,
+    '"JAPANESE" and "Japanese" produce the same score');
 
 // ---------------------------------------------------------------------------
 // Group 4: Status urgency ordering  (documented: searching > contacted > offer_received > 0)
@@ -118,24 +118,30 @@ assert_eq($enScore, $englishScore,
 
 echo "\n-- Status urgency ordering --\n";
 
-$s = CardScorer::calculate('EN', 'searching',     null, null, 0);
-$c = CardScorer::calculate('EN', 'contacted',     null, null, 0);
-$o = CardScorer::calculate('EN', 'offer_received', null, null, 0);
+$s = CardScorer::calculate('English', 'searching',      null, null, 0);
+$c = CardScorer::calculate('English', 'contacted',      null, null, 0);
+$o = CardScorer::calculate('English', 'offer_received', null, null, 0);
 
 assert_true($s > $c, 'searching scores higher than contacted');
 assert_true($c > $o, 'contacted scores higher than offer_received');
 assert_true($o > 0,  'offer_received scores above zero');
 
 // ---------------------------------------------------------------------------
-// Group 5: Score cap  (documented maximum: 100)
+// Group 5: Score cap  (documented maximum: 155)
 // ---------------------------------------------------------------------------
 
 echo "\n-- Score ceiling --\n";
 
-// Maximise every component: JP language (40) + searching (40) + offer > target (10) + 70 days = 10 weeks (10) = 100
-$maxScore = CardScorer::calculate('JP', 'searching', 1.0, 999.0, 70);
-assert_true($maxScore <= 100, 'score never exceeds documented maximum of 100');
-assert_eq(100, $maxScore,     'all components maximised sum to exactly 100');
+// Maximise all 5 components:
+//   Language:  Japanese = 35
+//   Status:    searching = 40
+//   Price:     offer(999) > target(1) = 25
+//   Age:       75 days → 15 pts (capped)
+//   Market:    target(1) / market(999) < 50% → 40
+// Total: 35+40+25+15+40 = 155
+$maxScore = CardScorer::calculate('Japanese', 'searching', 1.0, 999.0, 75, 999.0);
+assert_true($maxScore <= 155, 'score never exceeds documented maximum of 155');
+assert_eq(155, $maxScore,     'all components maximised sum to exactly 155');
 
 // ---------------------------------------------------------------------------
 // Group 6: explain() structure and terminal flag
@@ -170,7 +176,7 @@ echo "\n-- explain() consistency with calculate() --\n";
 $nowStr = date('Y-m-d H:i:s');
 
 $activeCard = [
-    'language'            => 'EN',
+    'language'            => 'English',
     'status'              => 'searching',
     'target_price'        => null,
     'current_offer_price' => null,
@@ -178,7 +184,7 @@ $activeCard = [
 ];
 
 $ex    = CardScorer::explain($activeCard);
-$calc  = CardScorer::calculate('EN', 'searching', null, null, 0);
+$calc  = CardScorer::calculate('English', 'searching', null, null, 0);
 
 assert_eq(false, $ex['terminal'], 'explain() active card — terminal flag is false');
 assert_eq($calc, $ex['total'],    'explain() total matches calculate() for age=0 card');
