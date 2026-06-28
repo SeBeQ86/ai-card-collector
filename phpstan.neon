@@ -4,4 +4,3 @@ parameters:
         - src
     excludePaths:
         - src/bootstrap.php
-    checkMissingIterableValueType: false
