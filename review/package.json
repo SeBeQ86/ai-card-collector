@@ -1,0 +1,19 @@
+{
+  "name": "ai-card-collector-review-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Local code review agent using Vercel AI SDK + Anthropic",
+  "scripts": {
+    "review": "npx tsx review.ts",
+    "review:file": "npx tsx review.ts --file"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
+    "ai": "^4.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0"
+  }
+}
