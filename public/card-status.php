@@ -6,6 +6,7 @@ $config = require dirname(__DIR__) . '/config/app.php';
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Auth\Auth;
+use App\Auth\Flash;
 use App\Card\CardScorer;
 use App\Database\Connection;
 use App\Security\Csrf;
@@ -49,9 +50,10 @@ $ageInDays = (int) round((time() - strtotime((string) $card['created_at'])) / 86
 $score = CardScorer::calculate(
     (string) $card['language'],
     $status,
-    $card['target_price'] !== null ? (float) $card['target_price'] : null,
-    $card['current_offer_price'] !== null ? (float) $card['current_offer_price'] : null,
-    $ageInDays
+    $card['target_price']         !== null ? (float) $card['target_price']         : null,
+    $card['current_offer_price']  !== null ? (float) $card['current_offer_price']  : null,
+    $ageInDays,
+    $card['market_price']         !== null ? (float) $card['market_price']         : null
 );
 
 $stmt = $pdo->prepare(
@@ -59,7 +61,14 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$status, $score, $cardId, $user['id']]);
 
+$statusLabels = [
+    'searching' => 'Szukam', 'contacted' => 'Skontaktowano',
+    'offer_received' => 'Oferta otrzymana', 'acquired' => 'Zakupiono', 'abandoned' => 'Porzucono',
+];
+Flash::set('success', 'Status zmieniony na: ' . ($statusLabels[$status] ?? $status) . '.');
+
 header('Location: index.php' . (isset($_POST['filter_status']) && $_POST['filter_status'] !== ''
     ? '?status=' . urlencode($_POST['filter_status'])
     : ''));
 exit;
+

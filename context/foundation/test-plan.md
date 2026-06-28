@@ -165,11 +165,11 @@ just copies the code.
 
 **Expected values must come from documented rules, not from reading `calculate()` and
 mirroring it.**
-`docs/business-rules.md` and `context/foundation/roadmap.md` S-03 define the scoring model:
-language rarity 0–40, status urgency 0–40, price pressure 0–10, age 0–10, max 100, terminal
-statuses always 0. These are the ground truth. If a test fails because `calculate()` was
-changed and the expected value was derived from the old code, the test has correctly caught
-a regression.
+`docs/business-rules.md` and `src/Card/CardScorer.php` define the scoring model:
+language rarity 0–35, status urgency 0–40, price pressure 0–25, age urgency 0–15,
+market pressure 0–40, max 155, terminal statuses always 0. These are the ground truth.
+If a test fails because `calculate()` was changed and the expected value was derived from
+the old code, the test has correctly caught a regression.
 
 **For auth and security, always include negative paths.**
 A test that only verifies "logged-in user can view card" does not cover R-01 or R-02. Every

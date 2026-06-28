@@ -8,12 +8,13 @@ declare(strict_types=1);
  * Run:  php tests/CardScorerTest.php
  * Exit: 0 on all pass, 1 on any failure.
  *
- * Tests document invariants from the class docblock and context/foundation/roadmap.md S-03:
- *   - Language rarity:  non-English editions = 40 pts; English (en/english) = 0 pts.
- *   - Status urgency:   searching=40, contacted=30, offer_received=10.
+ * Tests document invariants from src/Card/CardScorer.php and docs/business-rules.md:
+ *   - Language rarity:  JP/TH/PT/ID = 35 pts; FR/DE/ES/KR/RU/PL/ZH = 20 pts; EN = 0 pts.
+ *   - Status urgency:   searching=40, contacted=25, offer_received=10.
  *   - Terminal statuses (acquired, abandoned) always return score 0.
- *   - Age urgency:      1 pt per full week, capped at 10.
- *   - Maximum score:    100.
+ *   - Age urgency:      +1 per 5 days unresolved, capped at 15.
+ *   - Market pressure:  budget/market coverage: >=100%=0, 85-100%=+10, 70-85%=+20, 50-70%=+30, <50%=+40.
+ *   - Maximum score:    155 (active cards); 0 (terminal).
  *   - explain() total must be consistent with calculate() for the same inputs.
  *
  * Expected values below are derived from those documented rules, not from reading
