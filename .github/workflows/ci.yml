@@ -126,6 +126,10 @@ jobs:
           HASH=$(php -r "echo password_hash('testpass123', PASSWORD_BCRYPT);")
           mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test \
             -e "INSERT INTO users (email, password_hash) VALUES ('test@ci.local', '$HASH')"
+          UID=$(mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test -sN \
+            -e "SELECT id FROM users WHERE email='test@ci.local'")
+          mysql -h 127.0.0.1 -u root --password=root ai_card_collector_test \
+            -e "INSERT INTO wanted_cards (user_id, name, language, status, difficulty_score) VALUES ($UID, 'Charizard', 'English', 'searching', 48)"
 
       - name: Start PHP built-in server
         run: php -S localhost:8080 -t public/ &
