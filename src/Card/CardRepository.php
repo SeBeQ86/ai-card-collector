@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Card;
 
@@ -13,8 +11,9 @@ final class CardRepository
     public function listForUser(int $userId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, name, language, country,
+            'SELECT id, name, api_card_id, language, country,
                     target_price, current_offer_price,
+                    purchase_price, purchased_at, source_url, seller_name,
                     status, difficulty_score,
                     seller_contact, notes, created_at
              FROM   wanted_cards
@@ -25,11 +24,26 @@ final class CardRepository
         return $stmt->fetchAll();
     }
 
+    public function listAcquiredForUser(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id, name, api_card_id, language, country,
+                    target_price, purchase_price, purchased_at,
+                    source_url, seller_name, seller_contact, notes, created_at
+             FROM   wanted_cards
+             WHERE  user_id = ? AND status = \'acquired\'
+             ORDER  BY purchased_at DESC, created_at DESC'
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
     public function findForUser(int $userId, int $cardId): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, name, language, country,
+            'SELECT id, name, api_card_id, language, country,
                     target_price, current_offer_price,
+                    purchase_price, purchased_at, source_url, seller_name,
                     status, difficulty_score,
                     seller_contact, notes, created_at
              FROM   wanted_cards
@@ -46,10 +60,15 @@ final class CardRepository
         $stmt = $this->pdo->prepare(
             'UPDATE wanted_cards
              SET    name                = ?,
+                    api_card_id         = ?,
                     language            = ?,
                     country             = ?,
                     target_price        = ?,
                     current_offer_price = ?,
+                    purchase_price      = ?,
+                    purchased_at        = ?,
+                    source_url          = ?,
+                    seller_name         = ?,
                     status              = ?,
                     seller_contact      = ?,
                     notes               = ?,
@@ -58,10 +77,15 @@ final class CardRepository
         );
         $stmt->execute([
             $data['name'],
+            $data['api_card_id'],
             $data['language'],
             $data['country'],
             $data['target_price'],
             $data['current_offer_price'],
+            $data['purchase_price'],
+            $data['purchased_at'],
+            $data['source_url'],
+            $data['seller_name'],
             $data['status'],
             $data['seller_contact'],
             $data['notes'],
@@ -86,14 +110,15 @@ final class CardRepository
     {
         $stmt = $this->pdo->prepare(
             'INSERT INTO wanted_cards
-                (user_id, name, language, country,
+                (user_id, name, api_card_id, language, country,
                  target_price, current_offer_price,
                  status, seller_contact, notes, difficulty_score)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $userId,
             $data['name'],
+            $data['api_card_id'] ?? null,
             $data['language'],
             $data['country'],
             $data['target_price'],
