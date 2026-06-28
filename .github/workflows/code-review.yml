@@ -72,22 +72,9 @@ jobs:
           SUMMARY: ${{ steps.review.outputs.summary }}
           WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python3 -c "
-import os
-v = os.getenv('VERDICT', 'unknown')
-b = '✅ **PASS**' if v == 'pass' else '❌ **FAIL**'
-lines = [
-  '## \U0001f916 AI Code Review — ' + b,
-  '',
-  os.getenv('SCORES', ''),
-  '',
-  os.getenv('SUMMARY', 'Review unavailable.'),
-  '',
-  '---',
-  '*Powered by Claude Haiku · [workflow](' + os.getenv('WORKFLOW_URL', '') + ')*',
-]
-open('/tmp/comment.md', 'w').write('\n'.join(lines))
-"
+          if [ "$VERDICT" = "pass" ]; then BADGE="PASS"; else BADGE="FAIL"; fi
+          printf '## AI Code Review - %s\n\n%s\n\n%s\n\n---\n*Claude Haiku - %s*\n' \
+            "$BADGE" "$SCORES" "$SUMMARY" "$WORKFLOW_URL" > /tmp/comment.md
           gh pr comment ${{ github.event.pull_request.number }} \
             --repo ${{ github.repository }} \
             --body-file /tmp/comment.md
