@@ -123,3 +123,5 @@ No automatic deployment. See `.github/workflows/ci.yml`.
 
 - [Manual test plan](docs/manual-test-plan.md) — step-by-step browser test for every user flow
 - [Deployment notes](docs/deployment.md) — shared hosting setup and manual deploy process
+
+## Test PR
