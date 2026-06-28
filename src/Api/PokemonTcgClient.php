@@ -13,7 +13,7 @@ namespace App\Api;
  *   - Card search results:  6 hours  (new printings are rare)
  *   - Single card by ID:   24 hours  (card data never changes)
  */
-final class PokemonTcgClient
+class PokemonTcgClient
 {
     private const BASE_URL   = 'https://api.pokemontcg.io/v2';
     private const TTL_SEARCH = 21600;   // 6 h
@@ -115,7 +115,7 @@ final class PokemonTcgClient
 
     // ── private ───────────────────────────────────────────────────────────────
 
-    private function fetch(string $url): ?string
+    protected function fetch(string $url): ?string
     {
         $headers = ['Accept: application/json'];
         if ($this->apiKey !== '') {

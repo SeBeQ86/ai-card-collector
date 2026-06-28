@@ -83,6 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($input['status'], VALID_STATUSES, true)) {
             $errors[] = 'Status is invalid.';
         }
+        if ($input['api_card_id'] !== '' && strlen($input['api_card_id']) > 50) {
+            $errors[] = 'API card ID is too long.';
+        }
         if ($input['target_price'] !== '' && !is_numeric($input['target_price'])) {
             $errors[] = 'Target price must be a number.';
         }

@@ -4,7 +4,7 @@ namespace App\Api;
 
 use PDO;
 
-final class ApiCache
+class ApiCache
 {
     public function __construct(private PDO $pdo) {}
 
