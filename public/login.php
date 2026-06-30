@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-$config = require dirname(__DIR__) . '/config/app.php';
-require dirname(__DIR__) . '/src/bootstrap.php';
+$config = require __DIR__ . '/config/app.php';
+require __DIR__ . '/src/bootstrap.php';
 
 use App\Auth\Auth;
 use App\Database\Connection;

@@ -8,8 +8,8 @@
  * Returns: JSON array of {id, name, set, image_small, image_large}
  */
 
-$config = require dirname(__DIR__, 2) . '/config/app.php';
-require dirname(__DIR__, 2) . '/src/bootstrap.php';
+$config = require dirname(__DIR__) . '/config/app.php';
+require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Auth\Auth;
 use App\Api\ApiCache;
