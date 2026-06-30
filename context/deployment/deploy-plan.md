@@ -81,11 +81,15 @@ Keep a backup immediately before the migration. There is no automated rollback f
    | Local path | Server path |
    |---|---|
    | `public/` contents | `public_html/` (or the hosting web root) |
-   | `src/` | one level above `public_html/` |
-   | `config/` | one level above `public_html/` |
-   | `database/schema.sql` | one level above `public_html/` (reference only) |
-   | `.htaccess` (root) | one level above `public_html/` |
-   | `public/.htaccess` | inside `public_html/` |
+   | `src/` | `public_html/src/` |
+   | `config/` | `public_html/config/` |
+   | `public/.htaccess` | `public_html/.htaccess` |
+
+   **Note:** `src/` and `config/` go **inside** `public_html/` on shared hosting with
+   `open_basedir` restrictions (e.g. MyDevil). The PHP files use `file_exists()` to
+   detect which layout is in use and load paths accordingly — the same code works
+   both locally (XAMPP, where `src/` and `config/` are one level above `public/`)
+   and on shared hosting.
 
 4. Do **not** upload: `.env`, `database/seed.sql`, `.claude/`, `context/`, `docs/`,
    `database/demo-cards.sql`, any file containing credentials.
