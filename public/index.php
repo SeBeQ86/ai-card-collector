@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-$config = require __DIR__ . '/config/app.php';
-require __DIR__ . '/src/bootstrap.php';
+$config = require file_exists(__DIR__ . '/config/app.php') ? __DIR__ . '/config/app.php' : dirname(__DIR__) . '/config/app.php';
+require file_exists(__DIR__ . '/src/bootstrap.php') ? __DIR__ . '/src/bootstrap.php' : dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Auth\Auth;
 use App\Card\CardRepository;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/src/bootstrap.php';
+require file_exists(__DIR__ . '/src/bootstrap.php') ? __DIR__ . '/src/bootstrap.php' : dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Auth\Auth;
 use App\Security\Csrf;

@@ -8,8 +8,8 @@
  *   { updated: int, cards: [{id, market_price, target_price, score, tier}] }
  */
 
-$config = require dirname(__DIR__) . '/config/app.php';
-require dirname(__DIR__) . '/src/bootstrap.php';
+$config = require file_exists(dirname(__DIR__) . '/config/app.php') ? dirname(__DIR__) . '/config/app.php' : dirname(__DIR__, 2) . '/config/app.php';
+require file_exists(dirname(__DIR__) . '/src/bootstrap.php') ? dirname(__DIR__) . '/src/bootstrap.php' : dirname(__DIR__, 2) . '/src/bootstrap.php';
 
 use App\Auth\Auth;
 use App\Api\ApiCache;
